@@ -39,7 +39,7 @@ function parseMigrations(files: MigrationFiles): ParsedMigration[] {
       migrations.push({
         filename: path.split('/').pop()!,
         sql: sql as string,
-        index: parseInt(match[1], 10),
+        index: parseInt(match[1]!, 10),
       })
     }
   }
