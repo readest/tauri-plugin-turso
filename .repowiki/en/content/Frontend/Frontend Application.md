@@ -20,7 +20,7 @@
 
 ## Package Structure
 
-The TypeScript frontend is published as `tauri-plugin-libsql-api` on npm.
+The TypeScript frontend is published as `tauri-plugin-turso-api` on npm.
 
 ```
 guest-js/
@@ -34,7 +34,7 @@ guest-js/
 
 ```json
 {
-  "name": "tauri-plugin-libsql-api",
+  "name": "tauri-plugin-turso-api",
   "version": "0.1.0",
   "type": "module",
   "types": "./dist-js/index.d.ts",
@@ -123,7 +123,7 @@ static async load(pathOrOptions: string | LoadOptions): Promise<Database> {
       ? { path: pathOrOptions }
       : pathOrOptions;
 
-  const _path = await invoke<string>("plugin:libsql|load", { options });
+  const _path = await invoke<string>("plugin:turso|load", { options });
   return new Database(_path);
 }
 ```
@@ -138,7 +138,7 @@ The `load` method:
 
 ```typescript
 export interface LoadOptions {
-  path: string;                    // "sqlite:app.db" or "libsql://..."
+  path: string;                    // "sqlite:app.db" or "turso://..."
   encryption?: EncryptionConfig;   // Optional encryption
   syncUrl?: string;               // For embedded replica
   authToken?: string;             // For Turso connections
@@ -164,7 +164,7 @@ async execute(
   query: string, 
   bindValues?: unknown[]
 ): Promise<QueryResult> {
-  const result = await invoke<QueryResult>("plugin:libsql|execute", {
+  const result = await invoke<QueryResult>("plugin:turso|execute", {
     db: this.path,
     query,
     values: bindValues ?? [],
@@ -195,7 +195,7 @@ async select<T>(
   query: string, 
   bindValues?: unknown[]
 ): Promise<T> {
-  const result = await invoke<T>("plugin:libsql|select", {
+  const result = await invoke<T>("plugin:turso|select", {
     db: this.path,
     query,
     values: bindValues ?? [],
@@ -221,7 +221,7 @@ const users = await db.select<Array<{ id: number; name: string }>>(
 
 ```typescript
 async batch(queries: string[]): Promise<void> {
-  await invoke("plugin:libsql|batch", { db: this.path, queries });
+  await invoke("plugin:turso|batch", { db: this.path, queries });
 }
 ```
 
@@ -243,7 +243,7 @@ await db.batch([
 
 ```typescript
 async sync(): Promise<void> {
-  await invoke("plugin:libsql|sync", { db: this.path });
+  await invoke("plugin:turso|sync", { db: this.path });
 }
 ```
 
@@ -257,7 +257,7 @@ Pulls latest changes from Turso remote for embedded replica mode. No-op for loca
 
 ```typescript
 async close(db?: string): Promise<boolean> {
-  const success = await invoke<boolean>("plugin:libsql|close", { db });
+  const success = await invoke<boolean>("plugin:turso|close", { db });
   return success;
 }
 ```
@@ -316,7 +316,7 @@ function createProxy(options: LoadOptions): SqliteProxyCallback {
   return async (sql, params, method) => {
     // Lazy load on first query
     if (!loaded) {
-      await invoke<string>("plugin:libsql|load", { options });
+      await invoke<string>("plugin:turso|load", { options });
       loaded = true;
     }
 
@@ -325,7 +325,7 @@ function createProxy(options: LoadOptions): SqliteProxyCallback {
 
     if (isSelect || method === "all" || method === "get" || method === "values") {
       const rows = await invoke<Record<string, unknown>[]>(
-        "plugin:libsql|select", 
+        "plugin:turso|select", 
         { db: options.path, query: sql, values: params }
       );
       
@@ -336,7 +336,7 @@ function createProxy(options: LoadOptions): SqliteProxyCallback {
     }
 
     // INSERT / UPDATE / DELETE
-    await invoke("plugin:libsql|execute", {
+    await invoke("plugin:turso|execute", {
       db: options.path,
       query: sql,
       values: params,
@@ -360,7 +360,7 @@ function createProxy(options: LoadOptions): SqliteProxyCallback {
 
 ```typescript
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { createDrizzleProxy } from "tauri-plugin-libsql-api";
+import { createDrizzleProxy } from "tauri-plugin-turso-api";
 import * as schema from "./schema";
 
 // Create proxy
@@ -465,7 +465,7 @@ export async function migrate(
   const table = options.migrationsTable ?? "__drizzle_migrations";
 
   // 1. Create migrations tracking table
-  await invoke("plugin:libsql|execute", {
+  await invoke("plugin:turso|execute", {
     db: dbPath,
     query: `CREATE TABLE IF NOT EXISTS ${table} (...)`,
     values: [],
@@ -473,7 +473,7 @@ export async function migrate(
 
   // 2. Get already applied migrations
   const applied = await invoke<Array<{ hash: string }>>(
-    "plugin:libsql|select",
+    "plugin:turso|select",
     { db: dbPath, query: `SELECT hash FROM ${table}`, values: [] }
   );
   const appliedSet = new Set(applied.map((r) => r.hash));
@@ -498,7 +498,7 @@ export async function migrate(
     statements.push(`INSERT INTO ${table} (hash) VALUES ('${safeName}')`);
 
     // Execute in transaction
-    await invoke("plugin:libsql|batch", {
+    await invoke("plugin:turso|batch", {
       db: dbPath,
       queries: statements,
     });
@@ -519,7 +519,7 @@ export async function migrate(
 ### Usage Pattern
 
 ```typescript
-import { Database, migrate, createDrizzleProxy } from "tauri-plugin-libsql-api";
+import { Database, migrate, createDrizzleProxy } from "tauri-plugin-turso-api";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "./schema";
 

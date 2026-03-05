@@ -9,5 +9,4 @@ permissions = [
   "allow-select",
   "allow-close",
   "allow-get-config",
-  "allow-sync"
 ]

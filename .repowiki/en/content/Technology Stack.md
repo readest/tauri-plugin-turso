@@ -23,7 +23,7 @@
 | Crate | Version | Purpose |
 |-------|---------|---------|
 | `tauri` | 2.10.0 | Tauri framework core |
-| `libsql` | 0.9.29 | SQLite/libsql database client |
+| `turso` | 0.9.29 | SQLite/turso database client |
 | `serde` | 1.0 | Serialization/deserialization |
 | `serde_json` | 1.0 | JSON serialization |
 | `thiserror` | 2.0 | Error handling macros |
@@ -53,25 +53,25 @@ The `tauri-plugin` build dependency provides the plugin build tooling.
 
 | Feature | Default | Dependencies | Description |
 |---------|---------|--------------|-------------|
-| `core` | ✅ | `libsql/core` | Local SQLite databases |
-| `encryption` | ✅ | `libsql/encryption`, `bytes` | AES-256-CBC encryption |
-| `replication` | ❌ | `libsql/replication`, `libsql/tls` | Turso embedded replica |
-| `remote` | ❌ | `libsql/remote`, `libsql/tls` | Pure remote connections |
+| `core` | ✅ | `turso/core` | Local SQLite databases |
+| `encryption` | ✅ | `turso/encryption`, `bytes` | AES-256-CBC encryption |
+| `replication` | ❌ | `turso/replication`, `turso/tls` | Turso embedded replica |
+| `remote` | ❌ | `turso/remote`, `turso/tls` | Pure remote connections |
 
 **Feature configuration**:
 
 ```toml
 # Default (core + encryption)
-tauri-plugin-libsql = "0.1.0"
+tauri-plugin-turso = "0.1.0"
 
 # With replication
-tauri-plugin-libsql = { version = "0.1.0", features = ["replication"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["replication"] }
 
 # Without encryption
-tauri-plugin-libsql = { version = "0.1.0", default-features = false, features = ["core"] }
+tauri-plugin-turso = { version = "0.1.0", default-features = false, features = ["core"] }
 
 # All features
-tauri-plugin-libsql = { version = "0.1.0", features = ["core", "encryption", "replication", "remote"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["core", "encryption", "replication", "remote"] }
 ```
 
 **Section sources**

@@ -1,6 +1,6 @@
-# Tauri libsql 插件
+# Tauri turso 插件
 
-一个用于 [libsql](https://github.com/tursodatabase/libsql) 的 Tauri 插件，内置 AES-256-CBC 加密、Drizzle ORM 支持，以及浏览器兼容的迁移运行器。
+一个用于 [turso](https://github.com/tursodatabase/turso) 的 Tauri 插件，内置 AES-256-CBC 加密、Drizzle ORM 支持，以及浏览器兼容的迁移运行器。
 
 ## 试用示例应用
 
@@ -114,7 +114,7 @@ pnpm run tauri dev
 
 Drizzle ORM 非常出色 —— 类型安全的查询、简洁的迁移系统、出色的开发体验。但它通常需要 Node.js 或 Bun 运行时来直接打开数据库文件。Tauri 的 WebView 没有这样的运行时。
 
-这个插件通过 Drizzle 的 [sqlite-proxy](https://orm.drizzle.team/docs/get-started-sqlite#http-proxy) 模式解决了这个问题：Drizzle 生成 SQL，代理通过 Tauri 的 `invoke()` 将其发送到 Rust 插件，Rust 插件使用 libsql 执行它。你的 TypeScript 代码使用完整的 Drizzle ORM，零 Node.js 依赖。
+这个插件通过 Drizzle 的 [sqlite-proxy](https://orm.drizzle.team/docs/get-started-sqlite#http-proxy) 模式解决了这个问题：Drizzle 生成 SQL，代理通过 Tauri 的 `invoke()` 将其发送到 Rust 插件，Rust 插件使用 turso 执行它。你的 TypeScript 代码使用完整的 Drizzle ORM，零 Node.js 依赖。
 
 ### 3. 在 WebView 中工作的迁移
 
@@ -138,13 +138,13 @@ await migrate("sqlite:myapp.db", migrations);
 
 ### 4. 内置加密
 
-`@tauri-apps/plugin-sql`（使用 sqlx）不支持加密。这个插件使用 libsql 的原生 AES-256-CBC 加密，无需额外的原生库或 FFI 包装器。
+`@tauri-apps/plugin-sql`（使用 sqlx）不支持加密。这个插件使用 turso 的原生 AES-256-CBC 加密，无需额外的原生库或 FFI 包装器。
 
 ---
 
 ## 功能特性
 
-- **完整的 SQLite 兼容性** 通过 libsql
+- **完整的 SQLite 兼容性** 通过 turso
 - **原生加密** —— AES-256-CBC，可在插件级别或每个数据库配置
 - **Drizzle ORM 集成** —— sqlite-proxy 模式与 `createDrizzleProxy`
 - **迁移运行器** —— 浏览器安全的 `migrate()`，通过 Vite 在构建时打包 SQL 文件
@@ -167,15 +167,15 @@ await migrate("sqlite:myapp.db", migrations);
 
 ```toml
 [dependencies]
-tauri-plugin-libsql = "0.1.0"
+tauri-plugin-turso = "0.1.0"
 ```
 
 ### JavaScript / TypeScript
 
 ```bash
-npm install tauri-plugin-libsql-api
+npm install tauri-plugin-turso-api
 # 或
-pnpm add tauri-plugin-libsql-api
+pnpm add tauri-plugin-turso-api
 ```
 
 ---
@@ -189,7 +189,7 @@ pnpm add tauri-plugin-libsql-api
 
 // 默认：数据库相对于当前工作目录解析
 tauri::Builder::default()
-    .plugin(tauri_plugin_libsql::init())
+    .plugin(tauri_plugin_turso::init())
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 ```
@@ -199,13 +199,13 @@ tauri::Builder::default()
 ```rust
 use std::path::PathBuf;
 
-let config = tauri_plugin_libsql::Config {
+let config = tauri_plugin_turso::Config {
     base_path: Some(PathBuf::from("/path/to/data")),
     encryption: None,
 };
 
 tauri::Builder::default()
-    .plugin(tauri_plugin_libsql::init_with_config(config))
+    .plugin(tauri_plugin_turso::init_with_config(config))
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 ```
@@ -213,7 +213,7 @@ tauri::Builder::default()
 ### 2. 使用 Database 类（TypeScript）
 
 ```typescript
-import { Database } from 'tauri-plugin-libsql-api';
+import { Database } from 'tauri-plugin-turso-api';
 
 const db = await Database.load('sqlite:myapp.db');
 
@@ -250,7 +250,7 @@ await db.close();
 
 ```typescript
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
-import { createDrizzleProxy } from 'tauri-plugin-libsql-api';
+import { createDrizzleProxy } from 'tauri-plugin-turso-api';
 import * as schema from './schema';
 
 const db = drizzle(createDrizzleProxy('sqlite:myapp.db'), { schema });
@@ -263,7 +263,7 @@ const users = await db.select().from(schema.users);
 ### 使用加密
 
 ```typescript
-import { createDrizzleProxyWithEncryption } from 'tauri-plugin-libsql-api';
+import { createDrizzleProxyWithEncryption } from 'tauri-plugin-turso-api';
 
 const db = drizzle(
   createDrizzleProxyWithEncryption({
@@ -318,7 +318,7 @@ npx drizzle-kit generate
 **4. 在启动时运行迁移**：
 
 ```typescript
-import { Database, migrate } from 'tauri-plugin-libsql-api';
+import { Database, migrate } from 'tauri-plugin-turso-api';
 
 // Vite 在构建时将这些 SQL 文件打包到应用中
 const migrations = import.meta.glob<string>('./drizzle/*.sql', {
@@ -368,10 +368,10 @@ await migrate('sqlite:myapp.db', migrations, {
 在 Rust 中配置一次 —— 前端从不处理密钥：
 
 ```rust
-let config = tauri_plugin_libsql::Config {
+let config = tauri_plugin_turso::Config {
     base_path: None,
-    encryption: Some(tauri_plugin_libsql::EncryptionConfig {
-        cipher: tauri_plugin_libsql::Cipher::Aes256Cbc,
+    encryption: Some(tauri_plugin_turso::EncryptionConfig {
+        cipher: tauri_plugin_turso::Cipher::Aes256Cbc,
         key: my_32_byte_key, // Vec<u8>, 正好 32 字节
     }),
 };
@@ -461,7 +461,7 @@ await db.close();
 ### `migrate(dbPath, migrationFiles, options?)`
 
 ```typescript
-import { migrate } from 'tauri-plugin-libsql-api';
+import { migrate } from 'tauri-plugin-turso-api';
 
 const migrations = import.meta.glob<string>('./drizzle/*.sql', {
   eager: true,
@@ -483,7 +483,7 @@ await migrate('sqlite:myapp.db', migrations);
 ### `getConfig()`
 
 ```typescript
-import { getConfig } from 'tauri-plugin-libsql-api';
+import { getConfig } from 'tauri-plugin-turso-api';
 
 const { encrypted } = await getConfig();
 ```
@@ -497,7 +497,7 @@ const { encrypted } = await getConfig();
 ```json
 {
   "plugins": {
-    "libsql": {}
+    "turso": {}
   }
 }
 ```
@@ -506,13 +506,13 @@ const { encrypted } = await getConfig();
 
 ```json
 {
-  "identifier": "libsql:default",
+  "identifier": "turso:default",
   "permissions": [
-    "libsql:allow-load",
-    "libsql:allow-batch",
-    "libsql:allow-execute",
-    "libsql:allow-select",
-    "libsql:allow-close"
+    "turso:allow-load",
+    "turso:allow-batch",
+    "turso:allow-execute",
+    "turso:allow-select",
+    "turso:allow-close"
   ]
 }
 ```
@@ -521,9 +521,9 @@ const { encrypted } = await getConfig();
 
 ## 与 @tauri-apps/plugin-sql 的比较
 
-| 功能 | tauri-plugin-libsql | @tauri-apps/plugin-sql |
+| 功能 | tauri-plugin-turso | @tauri-apps/plugin-sql |
 |---------|---------------------|------------------------|
-| SQLite | ✅ libsql | ✅ sqlx |
+| SQLite | ✅ turso | ✅ sqlx |
 | 加密 | ✅ 内置 AES-256-CBC | ❌ |
 | Drizzle ORM | ✅ | ✅ |
 | 迁移运行器 | ✅ 浏览器安全 | ❌ |
@@ -534,7 +534,7 @@ const { encrypted } = await getConfig();
 
 ## Turso / 远程数据库
 
-该插件支持两种由 libsql 提供支持的远程连接模式。
+该插件支持两种由 turso 提供支持的远程连接模式。
 
 ### 嵌入式副本（推荐用于 Tauri）
 
@@ -542,19 +542,19 @@ const { encrypted } = await getConfig();
 
 > ⚠️ **限制：嵌入式副本加密目前在 `main` 分支上存在问题**
 
-> 由于上游 libsql 的一个 bug，当使用嵌入式副本（`syncUrl`）时，本地加密被**静默禁用**。V2 同步协议（Turso 始终使用）切换到了一条丢弃 `encryption_config` 的代码路径，导致即使传递了 `encryption` 配置，本地副本文件仍然**未加密**。详情请参见 [Issue #1](https://github.com/HuakunShen/tauri-plugin-libsql/issues/1)。
+> 由于上游 turso 的一个 bug，当使用嵌入式副本（`syncUrl`）时，本地加密被**静默禁用**。V2 同步协议（Turso 始终使用）切换到了一条丢弃 `encryption_config` 的代码路径，导致即使传递了 `encryption` 配置，本地副本文件仍然**未加密**。详情请参见 [Issue #1](https://github.com/HuakunShen/tauri-plugin-turso/issues/1)。
 
 >
 
 > **[`fix/sync-encryption`](../../tree/fix/sync-encryption) 分支上有可用的修复：**
 
-> 该分支使用了 [libsql 的一个 fork](https://github.com/HuakunShen/libsql)，它将 `encryption_config` 传递到 V2 同步路径，并通过 `sqlite3_rekey` 加密引导的副本。它可以工作，但无法发布到 crates.io（不允许路径依赖）。通过 git 使用它：
+> 该分支使用了 [turso 的一个 fork](https://github.com/HuakunShen/turso)，它将 `encryption_config` 传递到 V2 同步路径，并通过 `sqlite3_rekey` 加密引导的副本。它可以工作，但无法发布到 crates.io（不允许路径依赖）。通过 git 使用它：
 
 >
 
 > ```toml
 
-> tauri-plugin-libsql = { git = "https://github.com/HuakunShen/tauri-plugin-libsql", branch = "fix/sync-encryption", features = ["replication", "encryption"] }
+> tauri-plugin-turso = { git = "https://github.com/HuakunShen/tauri-plugin-turso", branch = "fix/sync-encryption", features = ["replication", "encryption"] }
 
 > ```
 
@@ -577,17 +577,17 @@ const { encrypted } = await getConfig();
 **1. 在你的应用 `Cargo.toml` 中启用 `replication` 功能**：
 
 ```toml
-tauri-plugin-libsql = { version = "0.1.0", features = ["replication"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["replication"] }
 ```
 
 **2. 使用 `syncUrl` 和 `authToken` 加载：**
 
 ```typescript
-import { Database, migrate } from 'tauri-plugin-libsql-api';
+import { Database, migrate } from 'tauri-plugin-turso-api';
 
 const db = await Database.load({
   path: 'sqlite:local.db',           // 本地副本文件
-  syncUrl: 'libsql://mydb-org.turso.io',
+  syncUrl: 'turso://mydb-org.turso.io',
   authToken: 'your-turso-auth-token',
 });
 
@@ -606,7 +606,7 @@ const migrations = import.meta.glob<string>('./drizzle/*.sql', {
 
 const db = await Database.load({
   path: 'sqlite:local.db',
-  syncUrl: 'libsql://mydb-org.turso.io',
+  syncUrl: 'turso://mydb-org.turso.io',
   authToken: import.meta.env.VITE_TURSO_AUTH_TOKEN,
 });
 
@@ -624,21 +624,21 @@ const drizzleDb = drizzle(createDrizzleProxy(db.path), { schema });
 **启用 `remote` 功能：**
 
 ```toml
-tauri-plugin-libsql = { version = "0.1.0", features = ["remote"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["remote"] }
 ```
 
 ```typescript
 const db = await Database.load({
-  path: 'libsql://mydb-org.turso.io',
+  path: 'turso://mydb-org.turso.io',
   authToken: 'your-turso-auth-token',
 });
 ```
 
 对于大多数 Tauri 应用，**嵌入式副本是更好的选择** —— 它离线工作，读取速度明显更快。
 
-> **关于 `batch()` 与嵌入式副本的注意事项**：在某些版本中，libsql 的 `execute_batch()` 不能正确地通过嵌入式副本层路由写入。该插件使用显式 `BEGIN`/`COMMIT` 事务内的单个 `execute()` 调用来避免这个问题。
+> **关于 `batch()` 与嵌入式副本的注意事项**：在某些版本中，turso 的 `execute_batch()` 不能正确地通过嵌入式副本层路由写入。该插件使用显式 `BEGIN`/`COMMIT` 事务内的单个 `execute()` 调用来避免这个问题。
 
-> **关于 URL 验证的注意事项**：libsql 的构建器在内部对同步 URL 调用 `unwrap()`，格式错误的值（例如前导/尾随空格、错误的协议）可能导致 panic。该插件将其包装在 `catch_unwind` 中，因此错误的 URL 会作为适当的错误显示，而不是无限期挂起 IPC。
+> **关于 URL 验证的注意事项**：turso 的构建器在内部对同步 URL 调用 `unwrap()`，格式错误的值（例如前导/尾随空格、错误的协议）可能导致 panic。该插件将其包装在 `catch_unwind` 中，因此错误的 URL 会作为适当的错误显示，而不是无限期挂起 IPC。
 
 ---
 
@@ -660,7 +660,7 @@ const db = await Database.load({
 **`Cargo.toml`**（在你的 Tauri 应用中）：
 
 ```toml
-tauri-plugin-libsql = { version = "0.1.0", default-features = false, features = ["core"] }
+tauri-plugin-turso = { version = "0.1.0", default-features = false, features = ["core"] }
 ```
 
 **可用功能：**
@@ -668,8 +668,8 @@ tauri-plugin-libsql = { version = "0.1.0", default-features = false, features = 
 | 功能 | 默认 | 描述 |
 |---------|---------|-------------|
 | `core` | ✅ | 本地 SQLite 数据库（始终需要）|
-| `encryption` | ✅ | 通过 libsql 的 AES-256-CBC 加密 |
-| `replication` | ❌ | libsql 复制支持（添加 TLS）|
+| `encryption` | ✅ | 通过 turso 的 AES-256-CBC 加密 |
+| `replication` | ❌ | turso 复制支持（添加 TLS）|
 | `remote` | ❌ | 远程数据库支持（计划中，见下文）|
 
 当 `encryption` 被禁用时，向 `Database.load()` 传递 `EncryptionConfig` 将在运行时返回错误。TypeScript API 表面保持不变 —— 无需重新构建你的 JS 代码。
@@ -682,16 +682,16 @@ tauri-plugin-libsql = { version = "0.1.0", default-features = false, features = 
 
 ### 使用 Claude Code
 
-将 `SKILL.md` 复制到你项目的 `.claude/skills/tauri-plugin-libsql/` 目录：
+将 `SKILL.md` 复制到你项目的 `.claude/skills/tauri-plugin-turso/` 目录：
 
 ```bash
-mkdir -p .claude/skills/tauri-plugin-libsql
-cp /path/to/tauri-plugin-libsql/SKILL.md .claude/skills/tauri-plugin-libsql/
+mkdir -p .claude/skills/tauri-plugin-turso
+cp /path/to/tauri-plugin-turso/SKILL.md .claude/skills/tauri-plugin-turso/
 ```
 
 Claude Code 自动发现技能。复制后，你可以自然地提示：
 
-> "使用 tauri-plugin-libsql 为我的 Tauri 应用添加一个 `notes` 表。包括模式、迁移和启动顺序。"
+> "使用 tauri-plugin-turso 为我的 Tauri 应用添加一个 `notes` 表。包括模式、迁移和启动顺序。"
 
 Claude 将应用正确的启动顺序，对迁移使用 `import.meta.glob`，并处理 drizzle 代理模式，无需额外指导。
 
@@ -704,12 +704,12 @@ Claude 将应用正确的启动顺序，对迁移使用 `import.meta.glob`，并
 ## 项目结构
 
 ```
-tauri-plugin-libsql/
+tauri-plugin-turso/
 ├── src/                    # Rust 插件
 │   ├── lib.rs              # 插件初始化、命令注册
 │   ├── commands.rs         # load、execute、select、close、ping
-│   ├── wrapper.rs          # DbConnection 包装 libsql
-│   ├── decode.rs           # libsql::Value → serde_json::Value
+│   ├── wrapper.rs          # DbConnection 包装 turso
+│   ├── decode.rs           # turso::Value → serde_json::Value
 │   ├── models.rs           # Cipher、EncryptionConfig、QueryResult
 │   ├── error.rs            # 错误类型
 │   ├── desktop.rs          # 桌面配置 & base_path

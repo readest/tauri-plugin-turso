@@ -18,14 +18,14 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     _app: &AppHandle<R>,
     _api: PluginApi<R, C>,
     config: Config,
-) -> crate::Result<Libsql> {
-    Ok(Libsql(config))
+) -> crate::Result<Turso> {
+    Ok(Turso(config))
 }
 
-/// Access to the libsql APIs.
-pub struct Libsql(Config);
+/// Access to the turso APIs.
+pub struct Turso(Config);
 
-impl Libsql {
+impl Turso {
     pub fn ping(&self, payload: PingRequest) -> crate::Result<PingResponse> {
         Ok(PingResponse {
             value: payload.value,

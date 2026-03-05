@@ -26,20 +26,20 @@ Add to your Tauri app's `Cargo.toml`:
 
 ```toml
 [dependencies]
-tauri-plugin-libsql = "0.1.0"
+tauri-plugin-turso = "0.1.0"
 ```
 
 For specific features:
 
 ```toml
 # With replication support (Turso embedded replica)
-tauri-plugin-libsql = { version = "0.1.0", features = ["replication"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["replication"] }
 
 # Without encryption (default has encryption)
-tauri-plugin-libsql = { version = "0.1.0", default-features = false, features = ["core"] }
+tauri-plugin-turso = { version = "0.1.0", default-features = false, features = ["core"] }
 
 # With all features
-tauri-plugin-libsql = { version = "0.1.0", features = ["core", "encryption", "replication", "remote"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["core", "encryption", "replication", "remote"] }
 ```
 
 **Section sources**
@@ -50,11 +50,11 @@ tauri-plugin-libsql = { version = "0.1.0", features = ["core", "encryption", "re
 ### JavaScript Dependency
 
 ```bash
-npm install tauri-plugin-libsql-api
+npm install tauri-plugin-turso-api
 # or
-pnpm add tauri-plugin-libsql-api
+pnpm add tauri-plugin-turso-api
 # or
-yarn add tauri-plugin-libsql-api
+yarn add tauri-plugin-turso-api
 ```
 
 **Section sources**
@@ -68,7 +68,7 @@ Add the plugin to your `tauri.conf.json`:
 ```json
 {
   "plugins": {
-    "libsql": {}
+    "turso": {}
   }
 }
 ```
@@ -77,14 +77,14 @@ Or configure granular permissions in a capability file:
 
 ```json
 {
-  "identifier": "libsql:default",
+  "identifier": "turso:default",
   "permissions": [
-    "libsql:allow-load",
-    "libsql:allow-batch",
-    "libsql:allow-execute",
-    "libsql:allow-select",
-    "libsql:allow-close",
-    "libsql:allow-sync"
+    "turso:allow-load",
+    "turso:allow-batch",
+    "turso:allow-execute",
+    "turso:allow-select",
+    "turso:allow-close",
+    "turso:allow-sync"
   ]
 }
 ```
@@ -102,13 +102,13 @@ Initialize the plugin in your Tauri app's main library:
 
 ```rust
 // src-tauri/src/lib.rs
-use tauri_plugin_libsql::Config;
+use tauri_plugin_turso::Config;
 use std::path::PathBuf;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_libsql::init())
+        .plugin(tauri_plugin_turso::init())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -126,7 +126,7 @@ pub fn run() {
     };
     
     tauri::Builder::default()
-        .plugin(tauri_plugin_libsql::init_with_config(config))
+        .plugin(tauri_plugin_turso::init_with_config(config))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -139,7 +139,7 @@ pub fn run() {
 ### TypeScript Usage
 
 ```typescript
-import { Database } from "tauri-plugin-libsql-api";
+import { Database } from "tauri-plugin-turso-api";
 
 // Load database
 const db = await Database.load("sqlite:myapp.db");
@@ -229,7 +229,7 @@ export default defineConfig({
 
 ```typescript
 // src/lib/db.ts
-import { Database, migrate, createDrizzleProxy } from "tauri-plugin-libsql-api";
+import { Database, migrate, createDrizzleProxy } from "tauri-plugin-turso-api";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "./schema";
 
@@ -347,7 +347,7 @@ The migration system:
 Configure encryption once in Rust:
 
 ```rust
-use tauri_plugin_libsql::{Config, EncryptionConfig, Cipher};
+use tauri_plugin_turso::{Config, EncryptionConfig, Cipher};
 
 pub fn run() {
     // Get key from environment (32 bytes for AES-256)
@@ -369,7 +369,7 @@ pub fn run() {
     };
     
     tauri::Builder::default()
-        .plugin(tauri_plugin_libsql::init_with_config(config))
+        .plugin(tauri_plugin_turso::init_with_config(config))
         // ...
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -390,7 +390,7 @@ Benefits:
 For user-provided keys:
 
 ```typescript
-import { Database, createDrizzleProxyWithEncryption } from "tauri-plugin-libsql-api";
+import { Database, createDrizzleProxyWithEncryption } from "tauri-plugin-turso-api";
 
 // Generate or get 32-byte key
 const key = new Uint8Array(32);
@@ -432,7 +432,7 @@ Add to your app's `Cargo.toml`:
 
 ```toml
 [dependencies]
-tauri-plugin-libsql = { version = "0.1.0", features = ["replication"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["replication"] }
 ```
 
 **Section sources**
@@ -443,11 +443,11 @@ tauri-plugin-libsql = { version = "0.1.0", features = ["replication"] }
 ### Configure Connection
 
 ```typescript
-import { Database, migrate, createDrizzleProxy } from "tauri-plugin-libsql-api";
+import { Database, migrate, createDrizzleProxy } from "tauri-plugin-turso-api";
 
 const db = await Database.load({
   path: "sqlite:local.db",                    // Local replica file
-  syncUrl: "libsql://mydb-org.turso.io",     // Turso database URL
+  syncUrl: "turso://mydb-org.turso.io",     // Turso database URL
   authToken: process.env.VITE_TURSO_AUTH_TOKEN, // Auth token
 });
 

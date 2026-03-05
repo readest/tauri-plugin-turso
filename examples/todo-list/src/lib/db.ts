@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { createDrizzleProxy } from "tauri-plugin-libsql-api";
+import { createDrizzleProxy } from "tauri-plugin-turso-api";
 import * as schema from "./schema";
 
 export type { Todo, NewTodo, TodoUpdate } from "./schema";

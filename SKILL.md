@@ -1,13 +1,13 @@
 ---
-name: tauri-plugin-libsql
-description: Use tauri-plugin-libsql for SQLite database access in Tauri apps with Drizzle ORM, browser-safe migrations, optional AES-256-CBC encryption, and Turso embedded replica sync. Use when working on this plugin's source, writing apps that consume it, adding schema changes, debugging migration or query errors, configuring encryption, or setting up Turso remote sync.
+name: tauri-plugin-turso
+description: Use tauri-plugin-turso for SQLite database access in Tauri apps with Drizzle ORM, browser-safe migrations, optional AES-256-CBC encryption, and Turso embedded replica sync. Use when working on this plugin's source, writing apps that consume it, adding schema changes, debugging migration or query errors, configuring encryption, or setting up Turso remote sync.
 version: 1.1.0
 license: MIT
 metadata:
   tags:
     - tauri
     - sqlite
-    - libsql
+    - turso
     - drizzle-orm
     - encryption
     - migrations
@@ -15,9 +15,9 @@ metadata:
     - replication
 ---
 
-# tauri-plugin-libsql
+# tauri-plugin-turso
 
-SQLite plugin for Tauri apps via libsql. Provides encryption, Drizzle ORM integration, a browser-safe migration runner, and Turso embedded replica sync.
+SQLite plugin for Tauri apps via turso. Provides encryption, Drizzle ORM integration, a browser-safe migration runner, and Turso embedded replica sync.
 
 ## Key Files
 
@@ -95,7 +95,7 @@ This creates `drizzle/0000_xxx.sql`, `drizzle/0001_xxx.sql`, etc. Commit these f
 ### App startup (Svelte example)
 
 ```typescript
-import { Database, migrate, createDrizzleProxy } from 'tauri-plugin-libsql-api';
+import { Database, migrate, createDrizzleProxy } from 'tauri-plugin-turso-api';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import * as schema from './schema';
 
@@ -131,15 +131,15 @@ The demo app (`src-tauri/src/lib.rs`) explicitly sets `base_path: Some(cwd)` so 
 
 ```rust
 // src-tauri/src/lib.rs
-let config = tauri_plugin_libsql::Config {
+let config = tauri_plugin_turso::Config {
     base_path: Some(cwd),
-    encryption: Some(tauri_plugin_libsql::EncryptionConfig {
-        cipher: tauri_plugin_libsql::Cipher::Aes256Cbc,
+    encryption: Some(tauri_plugin_turso::EncryptionConfig {
+        cipher: tauri_plugin_turso::Cipher::Aes256Cbc,
         key: my_32_byte_vec, // Vec<u8>
     }),
 };
 tauri::Builder::default()
-    .plugin(tauri_plugin_libsql::init_with_config(config))
+    .plugin(tauri_plugin_turso::init_with_config(config))
     ...
 ```
 
@@ -186,7 +186,7 @@ For local-first apps that sync with Turso cloud. Local reads are instant; writes
 
 In your app's `Cargo.toml`:
 ```toml
-tauri-plugin-libsql = { path = "...", features = ["replication"] }
+tauri-plugin-turso = { path = "...", features = ["replication"] }
 ```
 
 ### Usage
@@ -194,7 +194,7 @@ tauri-plugin-libsql = { path = "...", features = ["replication"] }
 ```typescript
 const db = await Database.load({
   path: 'sqlite:local.db',           // local replica file
-  syncUrl: 'libsql://mydb-org.turso.io',
+  syncUrl: 'turso://mydb-org.turso.io',
   authToken: 'your-turso-auth-token',
 });
 
@@ -210,7 +210,7 @@ await db.sync();
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `loading` stuck forever | Bad URL causes libsql to panic internally; IPC never responds | Plugin catches this via `catch_unwind` and returns a proper error |
+| `loading` stuck forever | Bad URL causes turso to panic internally; IPC never responds | Plugin catches this via `catch_unwind` and returns a proper error |
 | `no such table` after connecting | `__drizzle_migrations` has stale records from a previous run | Drop `todos` and `__drizzle_migrations`, re-run `migrate()` |
 | "invalid local state: db file exists but metadata file does not" | Plain SQLite file being opened as an embedded replica | Use a separate `dbFile` for each mode |
 
@@ -225,7 +225,7 @@ await db.batch([
 ]);
 ```
 
-> **Note**: `execute_batch()` from libsql does not correctly route writes through the embedded replica layer. The plugin uses individual `execute()` calls inside an explicit `BEGIN`/`COMMIT` instead.
+> **Note**: `execute_batch()` from turso does not correctly route writes through the embedded replica layer. The plugin uses individual `execute()` calls inside an explicit `BEGIN`/`COMMIT` instead.
 
 ## Common Errors
 
@@ -238,7 +238,7 @@ await db.batch([
 | `path '...' escapes the base directory` | Relative path contains `..` that exits `base_path` | Use a path that stays within the configured base directory |
 | DB file not found | Wrong working directory | Check `base_path` config or launch directory |
 | Encryption error on open | Wrong key for existing encrypted DB | Use exact same key as when DB was created |
-| `libsql panicked building the database` | Malformed `syncUrl` (spaces, wrong scheme, etc.) | Trim the URL; ensure it starts with `libsql://` or `https://` |
+| `turso panicked building the database` | Malformed `syncUrl` (spaces, wrong scheme, etc.) | Trim the URL; ensure it starts with `turso://` or `https://` |
 | `operation not supported: sync requires replication feature` | `db.sync()` called without `replication` feature | Add `features = ["replication"]` to `Cargo.toml` |
 
 ## Plugin Architecture
@@ -256,11 +256,11 @@ Database.load()      ──invoke──▶ commands::load()
                                    │
                                  wrapper::DbConnection
                                    │ catch_unwind (panic → proper Error)
-                                   ├── open_local()    — LibsqlBuilder::new_local
+                                   ├── open_local()    — TursoBuilder::new_local
                                    ├── open_replica()  — new_remote_replica + initial sync
-                                   └── open_remote()   — LibsqlBuilder::new_remote
+                                   └── open_remote()   — TursoBuilder::new_remote
                                    ▼
-                                 libsql (SQLite / Turso)
+                                 turso (SQLite / Turso)
 ```
 
 ## Building the JS Package
@@ -280,10 +280,10 @@ Every Tauri command needs a permission. Default set in `permissions/default.toml
 ```json
 {
   "permissions": [
-    "libsql:allow-load",
-    "libsql:allow-execute",
-    "libsql:allow-select",
-    "libsql:allow-close"
+    "turso:allow-load",
+    "turso:allow-execute",
+    "turso:allow-select",
+    "turso:allow-close"
   ]
 }
 ```

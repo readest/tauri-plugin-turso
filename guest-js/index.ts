@@ -16,7 +16,7 @@ export interface LoadOptions {
   /**
    * Database path.
    * - Local file: `"sqlite:myapp.db"`
-   * - Pure remote (Turso): `"libsql://mydb-org.turso.io"`
+   * - Pure remote (Turso): `"turso://mydb-org.turso.io"`
    */
   path: string;
   /** Encryption configuration (local databases only) */
@@ -27,7 +27,7 @@ export interface LoadOptions {
    * a local SQLite file kept in sync with the remote.
    * Requires the `replication` feature in Cargo.toml.
    *
-   * @example "libsql://mydb-org.turso.io"
+   * @example "turso://mydb-org.turso.io"
    */
   syncUrl?: string;
   /**
@@ -49,7 +49,7 @@ export interface QueryResult {
  * **Database**
  *
  * The `Database` class serves as the primary interface for
- * communicating with the libsql plugin.
+ * communicating with the turso plugin.
  */
 export class Database {
   /** The database path */
@@ -90,7 +90,7 @@ export class Database {
         ? { path: pathOrOptions }
         : pathOrOptions;
 
-    const _path = await invoke<string>("plugin:libsql|load", { options });
+    const _path = await invoke<string>("plugin:turso|load", { options });
     return new Database(_path);
   }
 
@@ -114,7 +114,7 @@ export class Database {
    * ```
    */
   async execute(query: string, bindValues?: unknown[]): Promise<QueryResult> {
-    const result = await invoke<QueryResult>("plugin:libsql|execute", {
+    const result = await invoke<QueryResult>("plugin:turso|execute", {
       db: this.path,
       query,
       values: bindValues ?? [],
@@ -136,7 +136,7 @@ export class Database {
    * ```
    */
   async select<T>(query: string, bindValues?: unknown[]): Promise<T> {
-    const result = await invoke<T>("plugin:libsql|select", {
+    const result = await invoke<T>("plugin:turso|select", {
       db: this.path,
       query,
       values: bindValues ?? [],
@@ -176,7 +176,7 @@ export class Database {
    * ```
    */
   async batch(queries: string[]): Promise<void> {
-    await invoke("plugin:libsql|batch", { db: this.path, queries });
+    await invoke("plugin:turso|batch", { db: this.path, queries });
   }
 
   /**
@@ -193,7 +193,7 @@ export class Database {
    * ```ts
    * const db = await Database.load({
    *   path: 'sqlite:local.db',
-   *   syncUrl: 'libsql://mydb-org.turso.io',
+   *   syncUrl: 'turso://mydb-org.turso.io',
    *   authToken: 'my-token',
    * });
    * // ... later, pull latest remote changes
@@ -201,11 +201,11 @@ export class Database {
    * ```
    */
   async sync(): Promise<void> {
-    await invoke("plugin:libsql|sync", { db: this.path });
+    await invoke("plugin:turso|sync", { db: this.path });
   }
 
   async close(db?: string): Promise<boolean> {
-    const success = await invoke<boolean>("plugin:libsql|close", { db });
+    const success = await invoke<boolean>("plugin:turso|close", { db });
     return success;
   }
 }
@@ -222,7 +222,7 @@ export interface ConfigInfo {
  * @returns ConfigInfo with encryption status
  */
 export async function getConfig(): Promise<ConfigInfo> {
-  return invoke<ConfigInfo>("plugin:libsql|get_config");
+  return invoke<ConfigInfo>("plugin:turso|get_config");
 }
 
 // Re-export for drizzle integration

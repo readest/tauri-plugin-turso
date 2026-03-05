@@ -2,8 +2,8 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { resolve } from "@tauri-apps/api/path";
-  import { Database, migrate } from "tauri-plugin-libsql-api";
-  import type { LoadOptions } from "tauri-plugin-libsql-api";
+  import { Database, migrate } from "tauri-plugin-turso-api";
+  import type { LoadOptions } from "tauri-plugin-turso-api";
   import { desc, eq } from "drizzle-orm";
   import { schema, createDb, type Todo, type TodoUpdate } from "$lib/db";
 

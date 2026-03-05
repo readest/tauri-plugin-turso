@@ -31,14 +31,14 @@ function createProxy(options: LoadOptions): SqliteProxyCallback {
 
   return async (sql: string, params: unknown[], method: 'all' | 'run' | 'get' | 'values') => {
     if (!loaded) {
-      await invoke<string>('plugin:libsql|load', { options })
+      await invoke<string>('plugin:turso|load', { options })
       loaded = true
     }
 
     const isSelect = /^\s*(\/\*[\s\S]*?\*\/\s*|--[^\n]*\n\s*)*SELECT\b/i.test(sql)
 
     if (isSelect || method === 'all' || method === 'get' || method === 'values') {
-      const rows = await invoke<Record<string, unknown>[]>('plugin:libsql|select', {
+      const rows = await invoke<Record<string, unknown>[]>('plugin:turso|select', {
         db: options.path,
         query: sql,
         values: params as unknown[],
@@ -56,7 +56,7 @@ function createProxy(options: LoadOptions): SqliteProxyCallback {
     }
 
     // INSERT / UPDATE / DELETE / DDL
-    await invoke('plugin:libsql|execute', {
+    await invoke('plugin:turso|execute', {
       db: options.path,
       query: sql,
       values: params as unknown[],
@@ -71,7 +71,7 @@ function createProxy(options: LoadOptions): SqliteProxyCallback {
  * @example
  * ```ts
  * import { drizzle } from 'drizzle-orm/sqlite-proxy';
- * import { createDrizzleProxy } from 'tauri-plugin-libsql-api';
+ * import { createDrizzleProxy } from 'tauri-plugin-turso-api';
  * import * as schema from './schema';
  *
  * const db = drizzle(createDrizzleProxy('sqlite:test.db'), { schema });
@@ -87,7 +87,7 @@ export function createDrizzleProxy(dbPath: string): SqliteProxyCallback {
  * @example
  * ```ts
  * import { drizzle } from 'drizzle-orm/sqlite-proxy';
- * import { createDrizzleProxyWithEncryption } from 'tauri-plugin-libsql-api';
+ * import { createDrizzleProxyWithEncryption } from 'tauri-plugin-turso-api';
  *
  * const db = drizzle(
  *   createDrizzleProxyWithEncryption({

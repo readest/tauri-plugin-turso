@@ -1,65 +1,65 @@
 use futures::lock::Mutex;
-use futures::FutureExt;
 use indexmap::IndexMap;
-use libsql::{params::Params, Builder as LibsqlBuilder, Connection, Database, Value};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
-use std::panic::AssertUnwindSafe;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+use turso::{Builder as TursoBuilder, Connection, Database, Value};
 
 use crate::decode;
 use crate::error::Error;
 use crate::models::{EncryptionConfig, QueryResult};
 
-/// A wrapper around libsql connection
+/// A wrapper around turso connection
 pub struct DbConnection {
     conn: Connection,
+    #[allow(dead_code)]
     db: Database,
 }
 
 impl DbConnection {
-    /// Connect to a libsql database.
-    ///
-    /// - Local only: `sync_url` = None
-    /// - Embedded replica (Turso): `sync_url` = Some("libsql://…"), `auth_token` = Some("…")
-    /// - Pure remote: `path` starts with "libsql://" or "https://", no `sync_url`
+    /// Connect to a turso/SQLite database (local only).
     pub async fn connect(
         path: &str,
         encryption: Option<EncryptionConfig>,
         base_path: PathBuf,
-        sync_url: Option<String>,
-        auth_token: Option<String>,
+        experimental: &[String],
     ) -> Result<Self, Error> {
-        // Wrap in catch_unwind: libsql's builder calls unwrap() internally and can
-        // panic on a malformed URL, which would cause the Tauri IPC to hang forever.
-        let path = path.to_string();
-        let db = AssertUnwindSafe(async move {
-            if let Some(url) = sync_url {
-                let full_path = Self::resolve_local_path(&path, &base_path)?;
-                Self::open_replica(full_path, url, auth_token.unwrap_or_default(), encryption).await
-            } else if path.starts_with("libsql://") || path.starts_with("https://") {
-                Self::open_remote(path, auth_token.unwrap_or_default()).await
-            } else {
-                let full_path = Self::resolve_local_path(&path, &base_path)?;
-                Self::open_local(full_path, encryption).await
-            }
-        })
-        .catch_unwind()
-        .await
-        .map_err(|_| {
-            Error::InvalidDbUrl(
-                "libsql panicked building the database — check your URL format \
-                 (expected libsql://… or https://…)"
-                    .into(),
-            )
-        })??;
+        let full_path = Self::resolve_local_path(path, &base_path)?;
+        let path_str = full_path.to_string_lossy().to_string();
 
+        #[allow(unused_mut)]
+        let mut builder = TursoBuilder::new_local(&path_str);
+
+        for feature in experimental {
+            match feature.as_str() {
+                "index_method" => builder = builder.experimental_index_method(true),
+                "encryption" => builder = builder.experimental_encryption(true),
+                "triggers" => builder = builder.experimental_triggers(true),
+                "attach" => builder = builder.experimental_attach(true),
+                "custom_types" => builder = builder.experimental_custom_types(true),
+                "materialized_views" => builder = builder.experimental_materialized_views(true),
+                _ => {}
+            }
+        }
+
+        #[cfg(feature = "encryption")]
+        if let Some(config) = encryption {
+            builder = builder
+                .experimental_encryption(true)
+                .with_encryption(config.into());
+        }
+        #[cfg(not(feature = "encryption"))]
+        if encryption.is_some() {
+            return Err(Error::InvalidDbUrl(
+                "encryption feature is not enabled — rebuild with the `encryption` feature".into(),
+            ));
+        }
+
+        let db = builder.build().await?;
         let conn = db.connect()?;
         Ok(Self { conn, db })
     }
-
-    // ── connection mode helpers ──────────────────────────────────────────────
 
     fn resolve_local_path(path: &str, base_path: &Path) -> Result<PathBuf, Error> {
         let db_path = path.strip_prefix("sqlite:").unwrap_or(path);
@@ -95,96 +95,7 @@ impl DbConnection {
         Ok(normalised)
     }
 
-    async fn open_local(
-        full_path: PathBuf,
-        encryption: Option<EncryptionConfig>,
-    ) -> Result<Database, Error> {
-        #[allow(unused_mut)]
-        let mut builder = LibsqlBuilder::new_local(&full_path.to_string_lossy().to_string());
-
-        #[cfg(feature = "encryption")]
-        if let Some(config) = encryption {
-            builder = builder.encryption_config(config.into());
-        }
-        #[cfg(not(feature = "encryption"))]
-        if encryption.is_some() {
-            return Err(Error::InvalidDbUrl(
-                "encryption feature is not enabled — rebuild with the `encryption` feature".into(),
-            ));
-        }
-
-        Ok(builder.build().await?)
-    }
-
-    #[cfg(feature = "replication")]
-    async fn open_replica(
-        full_path: PathBuf,
-        sync_url: String,
-        auth_token: String,
-        encryption: Option<EncryptionConfig>,
-    ) -> Result<Database, Error> {
-        #[allow(unused_mut)]
-        let mut builder = LibsqlBuilder::new_remote_replica(
-            full_path.to_string_lossy().to_string(),
-            sync_url,
-            auth_token,
-        );
-
-        #[cfg(feature = "encryption")]
-        if let Some(config) = encryption {
-            builder = builder.encryption_config(config.into());
-        }
-
-        let db = builder.build().await?;
-        // Initial sync so the local replica is up-to-date on connect
-        db.sync().await?;
-        Ok(db)
-    }
-
-    #[cfg(not(feature = "replication"))]
-    async fn open_replica(
-        _full_path: PathBuf,
-        _sync_url: String,
-        _auth_token: String,
-        _encryption: Option<EncryptionConfig>,
-    ) -> Result<Database, Error> {
-        Err(Error::InvalidDbUrl(
-            "embedded replica requires the `replication` feature — add features = [\"replication\"] to your Cargo.toml".into(),
-        ))
-    }
-
-    #[cfg(feature = "remote")]
-    async fn open_remote(url: String, auth_token: String) -> Result<Database, Error> {
-        Ok(LibsqlBuilder::new_remote(url, auth_token).build().await?)
-    }
-
-    #[cfg(not(feature = "remote"))]
-    async fn open_remote(_url: String, _auth_token: String) -> Result<Database, Error> {
-        Err(Error::InvalidDbUrl(
-            "remote connections require the `remote` feature — add features = [\"remote\"] to your Cargo.toml".into(),
-        ))
-    }
-
     // ── public API ───────────────────────────────────────────────────────────
-
-    /// Sync an embedded replica with its remote database.
-    /// No-op (returns Ok) for local-only databases when replication is disabled.
-    pub async fn sync(&self) -> Result<(), Error> {
-        Self::do_sync(&self.db).await
-    }
-
-    #[cfg(feature = "replication")]
-    async fn do_sync(db: &Database) -> Result<(), Error> {
-        db.sync().await?;
-        Ok(())
-    }
-
-    #[cfg(not(feature = "replication"))]
-    async fn do_sync(_db: &Database) -> Result<(), Error> {
-        Err(Error::OperationNotSupported(
-            "sync requires the `replication` feature".into(),
-        ))
-    }
 
     /// Execute a query that doesn't return rows
     pub async fn execute(&self, query: &str, values: Vec<JsonValue>) -> Result<QueryResult, Error> {
@@ -206,19 +117,19 @@ impl DbConnection {
         let params = json_to_params(values);
         let mut rows = self.conn.query(query, params).await?;
 
+        let column_count = rows.column_count();
+        let column_names: Vec<String> = (0..column_count)
+            .map(|i| rows.column_name(i))
+            .collect::<Result<Vec<_>, _>>()?;
+
         let mut results = Vec::new();
 
         while let Some(row) = rows.next().await? {
             let mut map = IndexMap::new();
-            let column_count = row.column_count();
-
-            for i in 0..column_count {
-                if let Some(column_name) = row.column_name(i) {
-                    let value = decode::to_json(&row, i)?;
-                    map.insert(column_name.to_string(), value);
-                }
+            for (i, name) in column_names.iter().enumerate() {
+                let value = decode::to_json(&row, i)?;
+                map.insert(name.clone(), value);
             }
-
             results.push(map);
         }
 
@@ -226,38 +137,32 @@ impl DbConnection {
     }
 
     /// Execute multiple SQL statements atomically inside a transaction.
-    /// Statements must not contain bound parameters — use for DDL and bulk DML only.
     pub async fn batch(&self, queries: Vec<String>) -> Result<(), Error> {
-        self.conn.execute("BEGIN", Params::None).await?;
+        self.conn.execute("BEGIN", ()).await?;
         for query in &queries {
-            if let Err(e) = self.conn.execute(query.as_str(), Params::None).await {
-                let _ = self.conn.execute("ROLLBACK", Params::None).await;
-                return Err(Error::Libsql(e));
+            if let Err(e) = self.conn.execute(query.as_str(), ()).await {
+                let _ = self.conn.execute("ROLLBACK", ()).await;
+                return Err(Error::Turso(e));
             }
         }
-        if let Err(e) = self.conn.execute("COMMIT", Params::None).await {
-            let _ = self.conn.execute("ROLLBACK", Params::None).await;
-            return Err(Error::Libsql(e));
+        if let Err(e) = self.conn.execute("COMMIT", ()).await {
+            let _ = self.conn.execute("ROLLBACK", ()).await;
+            return Err(Error::Turso(e));
         }
         Ok(())
     }
 
     pub async fn close(&self) {
-        self.conn.reset().await;
+        // turso connections are cleaned up on drop; no explicit close needed.
     }
 }
 
-/// Convert JSON values to libsql params
-fn json_to_params(values: Vec<JsonValue>) -> Params {
-    if values.is_empty() {
-        return Params::None;
-    }
-
-    let params: Vec<Value> = values.into_iter().map(json_to_libsql_value).collect();
-    Params::Positional(params)
+/// Convert JSON values to a Vec<Value> for turso params (Vec<Value> implements IntoParams).
+fn json_to_params(values: Vec<JsonValue>) -> Vec<Value> {
+    values.into_iter().map(json_to_turso_value).collect()
 }
 
-fn json_to_libsql_value(v: JsonValue) -> Value {
+fn json_to_turso_value(v: JsonValue) -> Value {
     match v {
         JsonValue::Null => Value::Null,
         JsonValue::Bool(b) => Value::Integer(if b { 1 } else { 0 }),

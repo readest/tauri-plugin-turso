@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Toaster } from "svelte-sonner";
-  import { getConfig } from "tauri-plugin-libsql-api";
+  import { getConfig } from "tauri-plugin-turso-api";
   import TodoList from "$lib/TodoList.svelte";
   import Card from "$lib/components/Card.svelte";
   import CardHeader from "$lib/components/CardHeader.svelte";
@@ -11,8 +11,8 @@
   import Button from "$lib/components/Button.svelte";
   import Input from "$lib/components/Input.svelte";
 
-  const STORAGE_SYNC_URL = "libsql-demo-sync-url";
-  const STORAGE_AUTH_TOKEN = "libsql-demo-auth-token";
+  const STORAGE_SYNC_URL = "turso-demo-sync-url";
+  const STORAGE_AUTH_TOKEN = "turso-demo-auth-token";
 
   let encrypted = $state(false);
   let configLoaded = $state(false);
@@ -65,7 +65,7 @@
 <main class="min-h-screen bg-background p-4 sm:p-6">
   <div class="mx-auto max-w-5xl">
     <div class="mb-6 text-center">
-      <h1 class="text-2xl font-bold">tauri-plugin-libsql demo</h1>
+      <h1 class="text-2xl font-bold">tauri-plugin-turso demo</h1>
       <p class="mt-1 text-sm text-muted-foreground">
         Local SQLite on the left · Turso embedded replica on the right
       </p>
@@ -109,7 +109,7 @@
                   id="sync-url"
                   type="text"
                   bind:value={syncUrlInput}
-                  placeholder="libsql://mydb-org.turso.io"
+                  placeholder="turso://mydb-org.turso.io"
                   class="font-mono text-xs"
                 />
               </div>

@@ -1,15 +1,15 @@
-use libsql::{Row, Value};
+use turso::{Row, Value};
 use serde_json::{Number, Value as JsonValue};
 
 use crate::Error;
 
-/// Convert a libsql row column to a JSON value
-pub fn to_json(row: &Row, idx: i32) -> Result<JsonValue, Error> {
+/// Convert a turso row column to a JSON value
+pub fn to_json(row: &Row, idx: usize) -> Result<JsonValue, Error> {
     let value = row.get_value(idx)?;
     value_to_json(value)
 }
 
-/// Convert a libsql Value to a JSON value
+/// Convert a turso Value to a JSON value
 fn value_to_json(value: Value) -> Result<JsonValue, Error> {
     match value {
         Value::Null => Ok(JsonValue::Null),

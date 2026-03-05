@@ -1,6 +1,6 @@
 # Todo List 演示
 
-一个双面板待办应用，演示 `tauri-plugin-libsql` 与本地 SQLite 和可选的 Turso 嵌入式副本同步。
+一个双面板待办应用，演示 `tauri-plugin-turso` 与本地 SQLite 和可选的 Turso 嵌入式副本同步。
 
 ## 展示内容
 
@@ -42,7 +42,7 @@ LIBSQL_ENCRYPTION_KEY=my-secret-key bun run tauri dev
 
 右面板在首次启动时显示连接表单。输入你的 Turso 凭据：
 
-1. **远程 URL** — `libsql://mydb-org.turso.io`
+1. **远程 URL** — `turso://mydb-org.turso.io`
 2. **认证令牌** — 你的 Turso 认证令牌
 
 ```bash

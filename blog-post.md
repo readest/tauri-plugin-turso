@@ -1,6 +1,6 @@
 # Building a Local-First Tauri App with Drizzle ORM, Encryption, and Turso Sync
 
-I've been building desktop apps with [Tauri](https://tauri.app/) for a while now, and one thing that consistently caused friction was the database layer. Tauri's official `@tauri-apps/plugin-sql` gets you SQLite, but it has no encryption support and no Drizzle integration that actually works inside a WebView. So I built my own plugin — `tauri-plugin-libsql` — and this post covers why I built it, the design decisions I made, and a few genuinely weird bugs I ran into along the way.
+I've been building desktop apps with [Tauri](https://tauri.app/) for a while now, and one thing that consistently caused friction was the database layer. Tauri's official `@tauri-apps/plugin-sql` gets you SQLite, but it has no encryption support and no Drizzle integration that actually works inside a WebView. So I built my own plugin — `tauri-plugin-turso` — and this post covers why I built it, the design decisions I made, and a few genuinely weird bugs I ran into along the way.
 
 ---
 
@@ -18,9 +18,9 @@ The official plugin, `@tauri-apps/plugin-sql`, handles this. It's fine for basic
 
 ---
 
-## Why libsql
+## Why turso
 
-[libsql](https://github.com/tursodatabase/libsql) is Turso's fork of SQLite. For the purposes of a Tauri plugin, it offers three things the standard sqlite3 crate doesn't:
+[turso](https://github.com/tursodatabase/turso) is Turso's fork of SQLite. For the purposes of a Tauri plugin, it offers three things the standard sqlite3 crate doesn't:
 
 - **Native encryption** via the `encryption` feature flag — AES-256-CBC, no extra native libraries
 - **Embedded replica mode** — local SQLite file that syncs bidirectionally with Turso cloud
@@ -33,7 +33,7 @@ The Rust API looks like this:
 let db = Builder::new_local("myapp.db").build().await?;
 
 // Embedded replica (local file + Turso sync)
-let db = Builder::new_remote_replica("local.db", "libsql://mydb.turso.io", "token")
+let db = Builder::new_remote_replica("local.db", "turso://mydb.turso.io", "token")
     .build().await?;
 
 // Initial sync on connect
@@ -52,10 +52,10 @@ import { invoke } from "@tauri-apps/api/core";
 
 const proxy = async (sql: string, params: unknown[], method: string) => {
   if (method === "run") {
-    const result = await invoke("plugin:libsql|execute", { db: path, query: sql, values: params });
+    const result = await invoke("plugin:turso|execute", { db: path, query: sql, values: params });
     return { rows: [] };
   }
-  const rows = await invoke("plugin:libsql|select", { db: path, query: sql, values: params });
+  const rows = await invoke("plugin:turso|select", { db: path, query: sql, values: params });
   return { rows: rows.map(Object.values) };
 };
 
@@ -101,7 +101,7 @@ The plugin supports two modes:
 **Plugin-level encryption** — configured once in Rust, applies to all databases. The key never touches JavaScript:
 
 ```rust
-let config = tauri_plugin_libsql::Config {
+let config = tauri_plugin_turso::Config {
     base_path: Some(cwd),
     encryption: Some(EncryptionConfig {
         cipher: Cipher::Aes256Cbc,
@@ -112,7 +112,7 @@ let config = tauri_plugin_libsql::Config {
 };
 
 tauri::Builder::default()
-    .plugin(tauri_plugin_libsql::init_with_config(config))
+    .plugin(tauri_plugin_turso::init_with_config(config))
 ```
 
 **Per-database encryption** — key passed from the frontend:
@@ -140,7 +140,7 @@ For a Tauri app, this is the ideal architecture. Your app works offline by defau
 ```typescript
 const db = await Database.load({
   path: "sqlite:local.db",
-  syncUrl: "libsql://mydb-org.turso.io",
+  syncUrl: "turso://mydb-org.turso.io",
   authToken: import.meta.env.VITE_TURSO_AUTH_TOKEN,
 });
 
@@ -164,11 +164,11 @@ Building this plugin involved a few bugs that were interesting enough to be wort
 After adding Turso support, I noticed that connecting with a badly-formatted URL caused the app to hang indefinitely on the loading spinner. The Rust terminal showed a panic:
 
 ```
-thread 'tokio-runtime-worker' panicked at libsql-0.9.29/src/database/builder.rs:409:66:
+thread 'tokio-runtime-worker' panicked at turso-0.9.29/src/database/builder.rs:409:66:
 called `Result::unwrap()` on an `Err` value: http::Error(InvalidUri(InvalidFormat))
 ```
 
-libsql's builder calls `unwrap()` internally when parsing the sync URL. This isn't a bug in the user's code — it's libsql panicking on an `Err` it should have returned. In Tauri, a panic inside an async command handler causes the IPC response to never be sent. The JavaScript `await` hangs forever. There's no timeout, no rejection — just silence.
+turso's builder calls `unwrap()` internally when parsing the sync URL. This isn't a bug in the user's code — it's turso panicking on an `Err` it should have returned. In Tauri, a panic inside an async command handler causes the IPC response to never be sent. The JavaScript `await` hangs forever. There's no timeout, no rejection — just silence.
 
 The fix is `catch_unwind` from the `futures` crate:
 
@@ -177,12 +177,12 @@ use futures::FutureExt;
 use std::panic::AssertUnwindSafe;
 
 let db = AssertUnwindSafe(async move {
-    // ... libsql builder calls ...
+    // ... turso builder calls ...
 })
 .catch_unwind()
 .await
 .map_err(|_| Error::InvalidDbUrl(
-    "libsql panicked — check your URL format".into()
+    "turso panicked — check your URL format".into()
 ))??;
 ```
 
@@ -190,9 +190,9 @@ The double `??` unwraps the panic result first (converted to `Error`), then the 
 
 ### Bug 2: `execute_batch` Silently Failing with Embedded Replicas
 
-The migration runner originally used `execute_batch()` from libsql to run multiple SQL statements atomically. This worked fine for local databases. With an embedded replica, migrations appeared to succeed — no errors — but the tables didn't actually get created. The Drizzle migrations table would record the migration as applied, then the next query would fail with "no such table".
+The migration runner originally used `execute_batch()` from turso to run multiple SQL statements atomically. This worked fine for local databases. With an embedded replica, migrations appeared to succeed — no errors — but the tables didn't actually get created. The Drizzle migrations table would record the migration as applied, then the next query would fail with "no such table".
 
-After a lot of debugging, it turned out that `execute_batch()` doesn't correctly route writes through the embedded replica's write path in libsql 0.9.x. Individual `execute()` calls inside an explicit `BEGIN`/`COMMIT` do work:
+After a lot of debugging, it turned out that `execute_batch()` doesn't correctly route writes through the embedded replica's write path in turso 0.9.x. Individual `execute()` calls inside an explicit `BEGIN`/`COMMIT` do work:
 
 ```rust
 pub async fn batch(&self, queries: Vec<String>) -> Result<(), Error> {
@@ -200,12 +200,12 @@ pub async fn batch(&self, queries: Vec<String>) -> Result<(), Error> {
     for query in &queries {
         if let Err(e) = self.conn.execute(query.as_str(), Params::None).await {
             let _ = self.conn.execute("ROLLBACK", Params::None).await;
-            return Err(Error::Libsql(e));
+            return Err(Error::Turso(e));
         }
     }
     if let Err(e) = self.conn.execute("COMMIT", Params::None).await {
         let _ = self.conn.execute("ROLLBACK", Params::None).await;
-        return Err(Error::Libsql(e));
+        return Err(Error::Turso(e));
     }
     Ok(())
 }
@@ -269,20 +269,20 @@ If you want to try it:
 ```toml
 # src-tauri/Cargo.toml
 [dependencies]
-tauri-plugin-libsql = "0.1.0"
+tauri-plugin-turso = "0.1.0"
 
 # For Turso sync:
-tauri-plugin-libsql = { version = "0.1.0", features = ["replication"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["replication"] }
 ```
 
 ```bash
-npm install tauri-plugin-libsql-api
+npm install tauri-plugin-turso-api
 ```
 
 ```rust
 // src-tauri/src/lib.rs
 tauri::Builder::default()
-    .plugin(tauri_plugin_libsql::init())
+    .plugin(tauri_plugin_turso::init())
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 ```

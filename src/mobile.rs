@@ -5,29 +5,29 @@ use tauri::{plugin::PluginApi, AppHandle, Runtime};
 use crate::models::*;
 
 #[cfg(target_os = "ios")]
-tauri::ios_plugin_binding!(init_plugin_libsql);
+tauri::ios_plugin_binding!(init_plugin_turso);
 
 // Use desktop Config
 pub use crate::desktop::Config;
 
 #[cfg(target_os = "ios")]
-tauri::ios_plugin_binding!(init_plugin_libsql);
+tauri::ios_plugin_binding!(init_plugin_turso);
 
 // initializes the Kotlin or Swift plugin classes
 pub fn init<R: Runtime, C: DeserializeOwned>(
     _app: &AppHandle<R>,
     _api: PluginApi<R, C>,
     config: Config,
-) -> crate::Result<Libsql> {
+) -> crate::Result<Turso> {
     // For mobile, we'll use a simple config-based approach
     // The actual mobile implementation would need platform-specific code
-    Ok(Libsql(config))
+    Ok(Turso(config))
 }
 
-/// Access to the libsql APIs.
-pub struct Libsql(Config);
+/// Access to the turso APIs.
+pub struct Turso(Config);
 
-impl Libsql {
+impl Turso {
     pub fn ping(&self, payload: PingRequest) -> crate::Result<PingResponse> {
         Ok(PingResponse {
             value: payload.value,

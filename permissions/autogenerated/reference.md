@@ -10,7 +10,6 @@ Default permissions for the plugin
 - `allow-select`
 - `allow-close`
 - `allow-get-config`
-- `allow-sync`
 
 ## Permission Table
 
@@ -24,7 +23,7 @@ Default permissions for the plugin
 <tr>
 <td>
 
-`libsql:allow-batch`
+`turso:allow-batch`
 
 </td>
 <td>
@@ -37,7 +36,7 @@ Enables the batch command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-batch`
+`turso:deny-batch`
 
 </td>
 <td>
@@ -50,7 +49,7 @@ Denies the batch command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-close`
+`turso:allow-close`
 
 </td>
 <td>
@@ -63,7 +62,7 @@ Enables the close command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-close`
+`turso:deny-close`
 
 </td>
 <td>
@@ -76,7 +75,7 @@ Denies the close command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-execute`
+`turso:allow-execute`
 
 </td>
 <td>
@@ -89,7 +88,7 @@ Enables the execute command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-execute`
+`turso:deny-execute`
 
 </td>
 <td>
@@ -102,7 +101,7 @@ Denies the execute command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-get-config`
+`turso:allow-get-config`
 
 </td>
 <td>
@@ -115,7 +114,7 @@ Enables the get_config command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-get-config`
+`turso:deny-get-config`
 
 </td>
 <td>
@@ -128,7 +127,7 @@ Denies the get_config command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-get-config`
+`turso:allow-get-config`
 
 </td>
 <td>
@@ -141,7 +140,7 @@ Enables the get_config command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-get-config`
+`turso:deny-get-config`
 
 </td>
 <td>
@@ -154,7 +153,7 @@ Denies the get_config command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-load`
+`turso:allow-load`
 
 </td>
 <td>
@@ -167,7 +166,7 @@ Enables the load command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-load`
+`turso:deny-load`
 
 </td>
 <td>
@@ -180,7 +179,7 @@ Denies the load command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-ping`
+`turso:allow-ping`
 
 </td>
 <td>
@@ -193,7 +192,7 @@ Enables the ping command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-ping`
+`turso:deny-ping`
 
 </td>
 <td>
@@ -206,7 +205,7 @@ Denies the ping command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-select`
+`turso:allow-select`
 
 </td>
 <td>
@@ -219,7 +218,7 @@ Enables the select command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-select`
+`turso:deny-select`
 
 </td>
 <td>
@@ -232,7 +231,7 @@ Denies the select command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:allow-sync`
+`turso:allow-sync`
 
 </td>
 <td>
@@ -245,7 +244,7 @@ Enables the sync command without any pre-configured scope.
 <tr>
 <td>
 
-`libsql:deny-sync`
+`turso:deny-sync`
 
 </td>
 <td>

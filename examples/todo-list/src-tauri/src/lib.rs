@@ -27,8 +27,8 @@ pub fn run() {
             eprintln!("LIBSQL_ENCRYPTION_KEY truncated to 32 bytes");
         }
 
-        tauri_plugin_libsql::EncryptionConfig {
-            cipher: tauri_plugin_libsql::Cipher::Aes256Cbc,
+        tauri_plugin_turso::EncryptionConfig {
+            cipher: tauri_plugin_turso::Cipher::Aes256Cbc,
             key: key_bytes,
         }
     });
@@ -39,13 +39,13 @@ pub fn run() {
         eprintln!("Database encryption: DISABLED (set LIBSQL_ENCRYPTION_KEY to enable)");
     }
 
-    let config = tauri_plugin_libsql::Config {
+    let config = tauri_plugin_turso::Config {
         base_path: Some(cwd),
         encryption,
     };
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_libsql::init_with_config(config))
+        .plugin(tauri_plugin_turso::init_with_config(config))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

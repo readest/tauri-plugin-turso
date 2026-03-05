@@ -1,6 +1,6 @@
 # AGENTS.md — src/
 
-Rust plugin implementation for tauri-plugin-libsql.
+Rust plugin implementation for tauri-plugin-turso.
 
 ## STRUCTURE
 
@@ -8,12 +8,12 @@ Rust plugin implementation for tauri-plugin-libsql.
 |------|---------|-------|
 | `lib.rs` | Plugin init, command registration | 54 |
 | `commands.rs` | Tauri command handlers (load, execute, select, batch, sync, close) | 170 |
-| `wrapper.rs` | `DbConnection` — libsql wrapper, local/replica/remote modes | 296 |
+| `wrapper.rs` | `DbConnection` — turso wrapper, local/replica/remote modes | 296 |
 | `models.rs` | Serde types: `LoadOptions`, `EncryptionConfig`, `QueryResult` | 70 |
 | `error.rs` | `thiserror` enum with `Serialize` for IPC | 33 |
 | `desktop.rs` | Desktop config, `base_path` resolution | 47 |
 | `mobile.rs` | Mobile stub (unimplemented) | 49 |
-| `decode.rs` | `libsql::Value` → `serde_json::Value` conversion | 30 |
+| `decode.rs` | `turso::Value` → `serde_json::Value` conversion | 30 |
 
 ## WHERE TO LOOK
 
@@ -28,7 +28,7 @@ Rust plugin implementation for tauri-plugin-libsql.
 ## CONVENTIONS
 
 - **Error type**: `crate::Result<T>` = `std::result::Result<T, Error>`
-- **State access**: `app.state::<Libsql>().inner()` or `db_instances.0.lock().await`
+- **State access**: `app.state::<Turso>().inner()` or `db_instances.0.lock().await`
 - **Lock discipline**: Clone Arc while holding lock, release before await:
   ```rust
   let conn = {
@@ -38,12 +38,12 @@ Rust plugin implementation for tauri-plugin-libsql.
   conn.execute(...).await  // lock released
   ```
 - **Path validation**: `resolve_local_path()` normalizes `..` and checks against `base_path`
-- **Panic safety**: libsql builder calls `unwrap()` on bad URLs — wrap in `AssertUnwindSafe` + `catch_unwind`
+- **Panic safety**: turso builder calls `unwrap()` on bad URLs — wrap in `AssertUnwindSafe` + `catch_unwind`
 
 ## ANTI-PATTERNS
 
 - **NEVER** hold mutex lock across `.await` — clone Arc first
-- **NEVER** let libsql builder panic escape — use `catch_unwind` → `Error::InvalidDbUrl`
+- **NEVER** let turso builder panic escape — use `catch_unwind` → `Error::InvalidDbUrl`
 - **NEVER** use `execute_batch` for replicas — use explicit transaction (see `batch()` implementation)
 - **NEVER** skip `#[cfg]` gates for optional features — always provide both implementations
 

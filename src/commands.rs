@@ -7,9 +7,9 @@ use crate::wrapper::DbInstances;
 use crate::Error;
 
 #[cfg(desktop)]
-use crate::desktop::Libsql;
+use crate::desktop::Turso;
 #[cfg(mobile)]
-use crate::mobile::Libsql;
+use crate::mobile::Turso;
 
 /// Load a database connection
 #[command]
@@ -20,26 +20,20 @@ pub(crate) async fn load<R: Runtime>(
 ) -> Result<String, Error> {
     let path = options.path.clone();
 
-    let libsql = app.state::<Libsql>().inner();
-    let base_path = libsql.base_path();
+    let turso = app.state::<Turso>().inner();
+    let base_path = turso.base_path();
 
     // Use provided encryption, or fall back to plugin default
-    let encryption = options.encryption.or_else(|| libsql.encryption().cloned());
+    let encryption = options.encryption.or_else(|| turso.encryption().cloned());
 
     // Idempotent: if a connection for this path is already open, return it as-is
-    // rather than silently replacing it (which would drop in-flight queries).
     if db_instances.0.lock().await.contains_key(&path) {
         return Ok(path);
     }
 
-    let conn = crate::wrapper::DbConnection::connect(
-        &path,
-        encryption,
-        base_path,
-        options.sync_url,
-        options.auth_token,
-    )
-    .await?;
+    let conn =
+        crate::wrapper::DbConnection::connect(&path, encryption, base_path, &options.experimental)
+            .await?;
 
     db_instances
         .0
@@ -58,8 +52,6 @@ pub(crate) async fn execute(
     query: String,
     values: Vec<JsonValue>,
 ) -> Result<QueryResult, Error> {
-    // Clone the Arc while holding the lock, then release the lock before
-    // awaiting the query so other operations aren't blocked.
     let conn = {
         let instances = db_instances.0.lock().await;
         instances
@@ -78,8 +70,6 @@ pub(crate) async fn select(
     query: String,
     values: Vec<JsonValue>,
 ) -> Result<Vec<IndexMap<String, JsonValue>>, Error> {
-    // Clone the Arc while holding the lock, then release the lock before
-    // awaiting the query so other operations aren't blocked.
     let conn = {
         let instances = db_instances.0.lock().await;
         instances
@@ -91,8 +81,6 @@ pub(crate) async fn select(
 }
 
 /// Execute multiple SQL statements atomically inside a single transaction.
-/// Use for DDL or bulk DML where partial failure must be prevented.
-/// Statements must not use bound parameters — embed values directly or use execute() instead.
 #[command]
 pub(crate) async fn batch(
     db_instances: State<'_, DbInstances>,
@@ -107,19 +95,6 @@ pub(crate) async fn batch(
             .clone()
     };
     conn.batch(queries).await
-}
-
-/// Sync an embedded replica with its remote Turso database
-#[command]
-pub(crate) async fn sync(db_instances: State<'_, DbInstances>, db: String) -> Result<(), Error> {
-    let conn = {
-        let instances = db_instances.0.lock().await;
-        instances
-            .get(&db)
-            .ok_or_else(|| Error::DatabaseNotLoaded(db.clone()))?
-            .clone()
-    };
-    conn.sync().await
 }
 
 /// Close a database connection
@@ -150,16 +125,16 @@ pub(crate) async fn ping<R: Runtime>(
     app: AppHandle<R>,
     payload: PingRequest,
 ) -> Result<PingResponse, Error> {
-    let libsql = app.state::<Libsql>().inner();
-    libsql.ping(payload)
+    let turso = app.state::<Turso>().inner();
+    turso.ping(payload)
 }
 
 /// Get plugin config info
 #[command]
 pub(crate) async fn get_config<R: Runtime>(app: AppHandle<R>) -> Result<ConfigInfo, Error> {
-    let libsql = app.state::<Libsql>().inner();
+    let turso = app.state::<Turso>().inner();
     Ok(ConfigInfo {
-        encrypted: libsql.encryption().is_some(),
+        encrypted: turso.encryption().is_some(),
     })
 }
 

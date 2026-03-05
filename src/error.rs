@@ -7,7 +7,7 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
-    Libsql(#[from] libsql::Error),
+    Turso(#[from] turso::Error),
     #[error("invalid connection url: {0}")]
     InvalidDbUrl(String),
     #[error("database {0} not loaded")]

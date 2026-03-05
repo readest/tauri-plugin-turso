@@ -48,7 +48,7 @@ function parseMigrations(files: MigrationFiles): ParsedMigration[] {
 }
 
 /**
- * Runs pending Drizzle ORM migrations against a libsql database.
+ * Runs pending Drizzle ORM migrations against a turso database.
  *
  * Because the Tauri plugin runs inside a browser context, standard
  * drizzle-kit migrate (which reads from the filesystem) cannot be used.
@@ -63,7 +63,7 @@ function parseMigrations(files: MigrationFiles): ParsedMigration[] {
  *
  * @example
  * ```ts
- * import { Database, migrate } from 'tauri-plugin-libsql-api'
+ * import { Database, migrate } from 'tauri-plugin-turso-api'
  *
  * // Bundle migrations at build time (glob pattern relative to this file)
  * const migrations = import.meta.glob('../drizzle/*.sql', {
@@ -84,7 +84,7 @@ export async function migrate(
   const table = options.migrationsTable ?? '__drizzle_migrations'
 
   // Ensure migrations tracking table exists
-  await invoke('plugin:libsql|execute', {
+  await invoke('plugin:turso|execute', {
     db: dbPath,
     query: `CREATE TABLE IF NOT EXISTS ${table} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +95,7 @@ export async function migrate(
   })
 
   // Get already-applied migrations
-  const applied = await invoke<Array<{ hash: string }>>('plugin:libsql|select', {
+  const applied = await invoke<Array<{ hash: string }>>('plugin:turso|select', {
     db: dbPath,
     query: `SELECT hash FROM ${table}`,
     values: [],
@@ -123,7 +123,7 @@ export async function migrate(
     const safeName = migration.filename.replace(/'/g, "''")
     statements.push(`INSERT INTO ${table} (hash) VALUES ('${safeName}')`)
 
-    await invoke('plugin:libsql|batch', {
+    await invoke('plugin:turso|batch', {
       db: dbPath,
       queries: statements,
     })

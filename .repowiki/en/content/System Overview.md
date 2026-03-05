@@ -21,7 +21,7 @@
 
 ## Introduction
 
-tauri-plugin-libsql is a Tauri plugin that provides SQLite database access through libsql (Turso's fork of SQLite). It enables Tauri applications to use SQLite databases with full Drizzle ORM integration, AES-256-CBC encryption support, and browser-safe migrations—all without requiring a Node.js runtime.
+tauri-plugin-turso is a Tauri plugin that provides SQLite database access through turso (Turso's fork of SQLite). It enables Tauri applications to use SQLite databases with full Drizzle ORM integration, AES-256-CBC encryption support, and browser-safe migrations—all without requiring a Node.js runtime.
 
 The plugin solves a critical problem for Tauri apps: traditional Drizzle ORM requires filesystem access at runtime to read migration files, which is impossible inside a WebView browser context. This plugin works around this limitation by accepting pre-bundled SQL content from Vite's `import.meta.glob`, enabling type-safe database operations in pure Tauri applications.
 
@@ -33,10 +33,10 @@ The plugin solves a critical problem for Tauri apps: traditional Drizzle ORM req
 ## Key Features
 
 ### 1. Full SQLite Compatibility
-The plugin uses libsql as its underlying database engine, providing complete SQLite compatibility with additional enhancements from the Turso ecosystem.
+The plugin uses turso as its underlying database engine, providing complete SQLite compatibility with additional enhancements from the Turso ecosystem.
 
 ### 2. Native AES-256-CBC Encryption
-Built-in encryption support via libsql's native encryption capabilities. Encryption keys can be configured at the plugin level (recommended for security) or per-database from the frontend.
+Built-in encryption support via turso's native encryption capabilities. Encryption keys can be configured at the plugin level (recommended for security) or per-database from the frontend.
 
 ### 3. Drizzle ORM Integration
 Full support for Drizzle ORM through the sqlite-proxy pattern. Drizzle generates SQL queries in TypeScript, which are then executed through Tauri's invoke system to the Rust backend.
@@ -76,7 +76,7 @@ graph TB
     subgraph "Backend (Rust)"
         J[Command Handlers]
         K[DbConnection]
-        L[libsql Client]
+        L[turso Client]
     end
 
     subgraph "Storage"
@@ -106,7 +106,7 @@ The architecture follows a layered design:
 
 1. **Frontend Layer**: TypeScript API providing a `Database` class and Drizzle integration
 2. **IPC Layer**: Tauri's invoke system for communication between frontend and backend
-3. **Backend Layer**: Rust plugin handling commands and managing libsql connections
+3. **Backend Layer**: Rust plugin handling commands and managing turso connections
 4. **Storage Layer**: SQLite databases (local, embedded replica, or pure remote)
 
 **Diagram sources**
@@ -122,11 +122,11 @@ The architecture follows a layered design:
 ## Project Structure
 
 ```
-tauri-plugin-libsql/
+tauri-plugin-turso/
 ├── src/                      # Rust plugin implementation
 │   ├── lib.rs               # Plugin initialization and command registration
 │   ├── commands.rs          # Tauri command handlers
-│   ├── wrapper.rs           # DbConnection wrapper around libsql
+│   ├── wrapper.rs           # DbConnection wrapper around turso
 │   ├── models.rs            # Serde types for IPC
 │   ├── error.rs             # Error types with thiserror
 │   ├── desktop.rs           # Desktop platform implementation
@@ -168,10 +168,10 @@ sequenceDiagram
     participant IPC as Tauri IPC
     participant CMD as Command Handler
     participant WRAP as DbConnection
-    participant SQL as libsql
+    participant SQL as turso
 
     FE->>FE: Database.load(options)
-    FE->>IPC: invoke("plugin:libsql|load", options)
+    FE->>IPC: invoke("plugin:turso|load", options)
     IPC->>CMD: load(options)
     CMD->>WRAP: DbConnection::connect(path, encryption, ...)
     WRAP->>SQL: Builder::new_local() / new_remote_replica()
@@ -191,10 +191,10 @@ sequenceDiagram
     participant CMD as Command Handler
     participant POOL as DbInstances
     participant WRAP as DbConnection
-    participant SQL as libsql
+    participant SQL as turso
 
     FE->>FE: db.execute(query, values)
-    FE->>IPC: invoke("plugin:libsql|execute", args)
+    FE->>IPC: invoke("plugin:turso|execute", args)
     IPC->>CMD: execute(db_instances, db, query, values)
     CMD->>POOL: db_instances.0.lock().await
     POOL-->>CMD: Arc<DbConnection>
@@ -221,7 +221,7 @@ sequenceDiagram
     DRZ->>DRZ: Generate SQL
     DRZ->>PROXY: proxy(sql, params, method)
     PROXY->>FE: Lazy load if needed
-    PROXY->>IPC: invoke("plugin:libsql|select", ...)
+    PROXY->>IPC: invoke("plugin:turso|select", ...)
     IPC->>RUST: commands::select
     RUST-->>IPC: IndexMap rows
     IPC-->>PROXY: Record<string, unknown>[]

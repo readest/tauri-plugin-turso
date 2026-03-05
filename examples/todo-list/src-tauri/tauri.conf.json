@@ -1,7 +1,7 @@
 {
   "productName": "todo-app",
   "version": "0.1.0",
-  "identifier": "todolist.libsql.demo",
+  "identifier": "todolist.turso.demo",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
@@ -20,7 +20,7 @@
         "height": 1000,
         "width": 1200,
         "resizable": true,
-        "title": "Todo App - libsql Demo"
+        "title": "Todo App - turso Demo"
       }
     ]
   },

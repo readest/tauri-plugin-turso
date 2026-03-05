@@ -1,34 +1,22 @@
 use serde::{Deserialize, Serialize};
 
-/// Cipher types for encryption
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Cipher {
-    #[serde(rename = "aes256cbc", alias = "aes256-cbc")]
-    Aes256Cbc,
-}
-
-#[cfg(feature = "encryption")]
-impl From<Cipher> for libsql::Cipher {
-    fn from(cipher: Cipher) -> Self {
-        match cipher {
-            Cipher::Aes256Cbc => libsql::Cipher::Aes256Cbc,
-        }
-    }
-}
-
-/// Encryption configuration for database
+/// Encryption configuration for database.
+/// The turso crate uses a cipher name string and a hex-encoded key.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EncryptionConfig {
-    pub cipher: Cipher,
-    pub key: Vec<u8>,
+    /// Cipher name (e.g. "aes256")
+    pub cipher: String,
+    /// Hex-encoded encryption key (e.g. 64 hex chars for a 32-byte key)
+    pub hexkey: String,
 }
 
-#[cfg(feature = "encryption")]
-impl From<EncryptionConfig> for libsql::EncryptionConfig {
+impl From<EncryptionConfig> for turso::EncryptionOpts {
     fn from(config: EncryptionConfig) -> Self {
-        libsql::EncryptionConfig::new(config.cipher.into(), bytes::Bytes::from(config.key))
+        turso::EncryptionOpts {
+            cipher: config.cipher,
+            hexkey: config.hexkey,
+        }
     }
 }
 
@@ -36,14 +24,13 @@ impl From<EncryptionConfig> for libsql::EncryptionConfig {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoadOptions {
-    /// Database path. For local files: "sqlite:myapp.db". For pure remote: "libsql://…"
+    /// Database path. For local files: "sqlite:myapp.db" or just "myapp.db"
     pub path: String,
     /// Optional encryption configuration (local databases only)
     pub encryption: Option<EncryptionConfig>,
-    /// Remote database URL for embedded replica mode (e.g. "libsql://mydb.turso.io")
-    pub sync_url: Option<String>,
-    /// Auth token for remote/Turso connections
-    pub auth_token: Option<String>,
+    /// Optional list of experimental features to enable (e.g. ["index_method"])
+    #[serde(default)]
+    pub experimental: Vec<String>,
 }
 
 /// Result of an execute operation

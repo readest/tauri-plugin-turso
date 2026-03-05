@@ -1,6 +1,6 @@
 # Todo List Demo
 
-A two-panel todo app demonstrating `tauri-plugin-libsql` with local SQLite and optional Turso embedded replica sync.
+A two-panel todo app demonstrating `tauri-plugin-turso` with local SQLite and optional Turso embedded replica sync.
 
 ## What it shows
 
@@ -42,7 +42,7 @@ The key is padded/truncated to 32 bytes automatically.
 
 The right panel shows a connect form on first launch. Enter your Turso credentials:
 
-1. **Remote URL** — `libsql://mydb-org.turso.io`
+1. **Remote URL** — `turso://mydb-org.turso.io`
 2. **Auth Token** — your Turso auth token
 
 ```bash

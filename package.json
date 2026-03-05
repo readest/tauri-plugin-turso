@@ -1,12 +1,12 @@
 {
-  "name": "tauri-plugin-libsql-api",
+  "name": "tauri-plugin-turso-api",
   "version": "0.1.0",
   "author": "HuakunShen",
   "repository": {
     "type": "git",
-    "url": "https://github.com/HuakunShen/tauri-plugin-libsql"
+    "url": "https://github.com/HuakunShen/tauri-plugin-turso"
   },
-  "description": "Tauri plugin for libsql with encryption support",
+  "description": "Tauri plugin for turso with encryption support",
   "type": "module",
   "types": "./dist-js/index.d.ts",
   "main": "./dist-js/index.cjs",

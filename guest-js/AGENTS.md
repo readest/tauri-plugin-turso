@@ -1,6 +1,6 @@
 # AGENTS.md — guest-js/
 
-TypeScript frontend API for tauri-plugin-libsql.
+TypeScript frontend API for tauri-plugin-turso.
 
 ## STRUCTURE
 
@@ -14,14 +14,14 @@ TypeScript frontend API for tauri-plugin-libsql.
 
 | Task | File | Pattern |
 |------|------|---------|
-| Add Database method | `index.ts` | Add to `class Database`, call `invoke("plugin:libsql\|cmd")` |
+| Add Database method | `index.ts` | Add to `class Database`, call `invoke("plugin:turso\|cmd")` |
 | Modify Drizzle integration | `drizzle.ts` | Proxy callback transforms row format |
 | Change migration logic | `migrate.ts` | Parses filenames, sorts by numeric prefix |
 | Export new symbol | `index.ts` bottom | `export { X } from "./file"` |
 
 ## CONVENTIONS
 
-- **Invoke pattern**: `invoke<T>("plugin:libsql|command", { args })`
+- **Invoke pattern**: `invoke<T>("plugin:turso|command", { args })`
 - **Load options**: `string | { path, encryption?, syncUrl?, authToken? }`
 - **Drizzle proxy**: Returns `{ rows: unknown[] }`, transforms `IndexMap` → array-per-row
 - **Migrations**: Expects `Record<string, string>` from `import.meta.glob(..., { eager: true, query: '?raw' })`
@@ -37,7 +37,7 @@ TypeScript frontend API for tauri-plugin-libsql.
 ## STARTUP PATTERN
 
 ```typescript
-import { Database, migrate, createDrizzleProxy } from 'tauri-plugin-libsql-api';
+import { Database, migrate, createDrizzleProxy } from 'tauri-plugin-turso-api';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import * as schema from './schema';
 

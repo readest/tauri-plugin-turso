@@ -46,7 +46,7 @@ graph TB
 
     subgraph "Database Layer"
         WRAP[DbConnection]
-        LIBSQL[libsql]
+        LIBSQL[turso]
     end
 
     subgraph "Storage Layer"
@@ -77,7 +77,7 @@ The architecture follows a clean separation of concerns across five distinct lay
 2. **API Layer**: TypeScript API providing the `Database` class and helper functions
 3. **IPC Layer**: Tauri's invoke system for secure frontend-backend communication
 4. **Plugin Layer**: Rust command handlers and state management
-5. **Database Layer**: Connection management and libsql integration
+5. **Database Layer**: Connection management and turso integration
 6. **Storage Layer**: Actual data storage (local files, replicas, or remote)
 
 **Diagram sources**
@@ -100,25 +100,25 @@ The Tauri plugin follows the standard Tauri v2 plugin architecture with clear se
 sequenceDiagram
     participant TAURI as Tauri Runtime
     participant BUILDER as Plugin Builder
-    participant LIBSQL as Libsql State
+    participant LIBSQL as Turso State
     participant INSTANCES as DbInstances
 
     TAURI->>BUILDER: init_with_config(config)
-    BUILDER->>BUILDER: Builder::new("libsql")
+    BUILDER->>BUILDER: Builder::new("turso")
     BUILDER->>BUILDER: .invoke_handler(...)
     BUILDER->>BUILDER: .setup(|app, api|)
     BUILDER->>LIBSQL: desktop::init() / mobile::init()
-    BUILDER->>TAURI: app.manage(libsql)
+    BUILDER->>TAURI: app.manage(turso)
     BUILDER->>TAURI: app.manage(DbInstances::default())
     BUILDER-->>TAURI: Plugin ready
 ```
 
 The plugin initialization process:
 
-1. **Builder Configuration**: Creates a Tauri plugin builder with the plugin name "libsql"
+1. **Builder Configuration**: Creates a Tauri plugin builder with the plugin name "turso"
 2. **Command Registration**: Registers all command handlers via `generate_handler!` macro
 3. **State Setup**: Initializes two state objects managed by Tauri:
-   - `Libsql`: Plugin configuration (base_path, encryption defaults)
+   - `Turso`: Plugin configuration (base_path, encryption defaults)
    - `DbInstances`: Connection pool for active database connections
 4. **Platform Abstraction**: Uses conditional compilation for desktop vs mobile
 
@@ -133,7 +133,7 @@ The plugin maintains two primary state containers:
 
 ```rust
 // Plugin-level configuration
-pub struct Libsql(pub Config);
+pub struct Turso(pub Config);
 
 // Database connection pool
 pub struct DbInstances(
@@ -141,7 +141,7 @@ pub struct DbInstances(
 );
 ```
 
-**Libsql State** (managed at plugin level):
+**Turso State** (managed at plugin level):
 - `base_path`: Root directory for relative database paths
 - `encryption`: Default encryption configuration
 - Platform-specific initialization (desktop vs mobile)
@@ -243,16 +243,16 @@ flowchart TD
 ```mermaid
 graph LR
     A[serde_json::Value] --> B[json_to_params]
-    B --> C[libsql::Value]
-    C --> D[libsql execute]
-    D --> E[libsql::Row]
+    B --> C[turso::Value]
+    C --> D[turso execute]
+    D --> E[turso::Row]
     E --> F[decode::to_json]
     F --> G[serde_json::Value]
 ```
 
 The plugin handles complex value conversion between JavaScript/JSON and SQLite types:
 
-**JavaScript → SQLite** (`json_to_libsql_value`):
+**JavaScript → SQLite** (`json_to_turso_value`):
 - `null` → `Value::Null`
 - `boolean` → `Value::Integer(0/1)`
 - `number` → `Value::Integer` or `Value::Real`
@@ -322,7 +322,7 @@ DbConnection::connect(
     "sqlite:local.db",
     encryption,
     base_path,
-    Some("libsql://mydb.turso.io"),  // sync_url
+    Some("turso://mydb.turso.io"),  // sync_url
     Some("auth-token"),              // auth_token
 ).await
 ```
@@ -340,9 +340,9 @@ DbConnection::connect(
 Direct connection to Turso cloud (no local file).
 
 ```rust
-// Connection string: "libsql://mydb.turso.io"
+// Connection string: "turso://mydb.turso.io"
 DbConnection::connect(
-    "libsql://mydb.turso.io",
+    "turso://mydb.turso.io",
     None,           // No encryption for remote
     base_path,
     None,           // No sync_url
@@ -428,15 +428,15 @@ graph TB
 
 ### Panic Safety
 
-The libsql library calls `unwrap()` internally on malformed URLs, which would crash the Tauri process. The plugin wraps all libsql builder calls in `catch_unwind`:
+The turso library calls `unwrap()` internally on malformed URLs, which would crash the Tauri process. The plugin wraps all turso builder calls in `catch_unwind`:
 
 ```rust
 let db = AssertUnwindSafe(async move {
-    // libsql builder calls that might panic
+    // turso builder calls that might panic
 })
 .catch_unwind()
 .await
-.map_err(|_| Error::InvalidDbUrl("libsql panicked...".into()))?;
+.map_err(|_| Error::InvalidDbUrl("turso panicked...".into()))?;
 ```
 
 This converts panics into proper error responses that can be handled gracefully by the frontend.

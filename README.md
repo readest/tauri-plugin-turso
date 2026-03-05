@@ -1,6 +1,6 @@
-# Tauri Plugin libsql
+# Tauri Plugin turso
 
-A Tauri plugin for [libsql](https://github.com/tursodatabase/libsql) with built-in AES-256-CBC encryption, Drizzle ORM support, and a browser-compatible migration runner.
+A Tauri plugin for [turso](https://github.com/tursodatabase/turso) with built-in AES-256-CBC encryption, Drizzle ORM support, and a browser-compatible migration runner.
 
 ## Try the Example App
 
@@ -52,7 +52,7 @@ Using raw SQL in Rust is verbose, and Rust ORMs (Diesel, SeaORM) require schema 
 
 Drizzle ORM is excellent — type-safe queries, a clean migration system, great ergonomics. But it normally requires a Node.js or Bun runtime to open database files directly. Tauri's WebView has no such runtime.
 
-This plugin solves that with Drizzle's [sqlite-proxy](https://orm.drizzle.team/docs/get-started-sqlite#http-proxy) pattern: Drizzle generates SQL, the proxy sends it via Tauri's `invoke()` to the Rust plugin, and the Rust plugin executes it with libsql. Your TypeScript code uses full Drizzle ORM with zero Node.js dependency.
+This plugin solves that with Drizzle's [sqlite-proxy](https://orm.drizzle.team/docs/get-started-sqlite#http-proxy) pattern: Drizzle generates SQL, the proxy sends it via Tauri's `invoke()` to the Rust plugin, and the Rust plugin executes it with turso. Your TypeScript code uses full Drizzle ORM with zero Node.js dependency.
 
 ### 3. Migrations that work inside a WebView
 
@@ -76,13 +76,13 @@ The `migrate()` function in this plugin receives the pre-loaded SQL strings, tra
 
 ### 4. Encryption built in
 
-`@tauri-apps/plugin-sql` (which uses sqlx) has no encryption support. This plugin uses libsql's native AES-256-CBC encryption with no extra native libraries or FFI wrappers required.
+`@tauri-apps/plugin-sql` (which uses sqlx) has no encryption support. This plugin uses turso's native AES-256-CBC encryption with no extra native libraries or FFI wrappers required.
 
 ---
 
 ## Features
 
-- **Full SQLite compatibility** via libsql
+- **Full SQLite compatibility** via turso
 - **Native encryption** — AES-256-CBC, configured once at the plugin level or per-database
 - **Drizzle ORM integration** — sqlite-proxy pattern with `createDrizzleProxy`
 - **Migration runner** — browser-safe `migrate()` that bundles SQL files at build time via Vite
@@ -103,15 +103,15 @@ The `migrate()` function in this plugin receives the pre-loaded SQL strings, tra
 
 ```toml
 [dependencies]
-tauri-plugin-libsql = "0.1.0"
+tauri-plugin-turso = "0.1.0"
 ```
 
 ### JavaScript / TypeScript
 
 ```bash
-npm install tauri-plugin-libsql-api
+npm install tauri-plugin-turso-api
 # or
-pnpm add tauri-plugin-libsql-api
+pnpm add tauri-plugin-turso-api
 ```
 
 ---
@@ -125,7 +125,7 @@ pnpm add tauri-plugin-libsql-api
 
 // Default: databases resolve relative to current working directory
 tauri::Builder::default()
-    .plugin(tauri_plugin_libsql::init())
+    .plugin(tauri_plugin_turso::init())
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 ```
@@ -135,13 +135,13 @@ To store databases in a fixed location:
 ```rust
 use std::path::PathBuf;
 
-let config = tauri_plugin_libsql::Config {
+let config = tauri_plugin_turso::Config {
     base_path: Some(PathBuf::from("/path/to/data")),
     encryption: None,
 };
 
 tauri::Builder::default()
-    .plugin(tauri_plugin_libsql::init_with_config(config))
+    .plugin(tauri_plugin_turso::init_with_config(config))
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 ```
@@ -149,7 +149,7 @@ tauri::Builder::default()
 ### 2. Use the Database class (TypeScript)
 
 ```typescript
-import { Database } from "tauri-plugin-libsql-api";
+import { Database } from "tauri-plugin-turso-api";
 
 const db = await Database.load("sqlite:myapp.db");
 
@@ -183,7 +183,7 @@ Relative paths are normalised (`..` components are folded) and must remain withi
 
 ```typescript
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { createDrizzleProxy } from "tauri-plugin-libsql-api";
+import { createDrizzleProxy } from "tauri-plugin-turso-api";
 import * as schema from "./schema";
 
 const db = drizzle(createDrizzleProxy("sqlite:myapp.db"), { schema });
@@ -196,7 +196,7 @@ const users = await db.select().from(schema.users);
 ### With Encryption
 
 ```typescript
-import { createDrizzleProxyWithEncryption } from "tauri-plugin-libsql-api";
+import { createDrizzleProxyWithEncryption } from "tauri-plugin-turso-api";
 
 const db = drizzle(
   createDrizzleProxyWithEncryption({
@@ -251,7 +251,7 @@ npx drizzle-kit generate
 **4. Run migrations on startup**:
 
 ```typescript
-import { Database, migrate } from "tauri-plugin-libsql-api";
+import { Database, migrate } from "tauri-plugin-turso-api";
 
 // Vite bundles these SQL files into the app at build time
 const migrations = import.meta.glob<string>("./drizzle/*.sql", {
@@ -301,10 +301,10 @@ await migrate("sqlite:myapp.db", migrations, {
 Configure once in Rust — the frontend never handles the key:
 
 ```rust
-let config = tauri_plugin_libsql::Config {
+let config = tauri_plugin_turso::Config {
     base_path: None,
-    encryption: Some(tauri_plugin_libsql::EncryptionConfig {
-        cipher: tauri_plugin_libsql::Cipher::Aes256Cbc,
+    encryption: Some(tauri_plugin_turso::EncryptionConfig {
+        cipher: tauri_plugin_turso::Cipher::Aes256Cbc,
         key: my_32_byte_key, // Vec<u8>, exactly 32 bytes
     }),
 };
@@ -394,7 +394,7 @@ await db.close();
 ### `migrate(dbPath, migrationFiles, options?)`
 
 ```typescript
-import { migrate } from "tauri-plugin-libsql-api";
+import { migrate } from "tauri-plugin-turso-api";
 
 const migrations = import.meta.glob<string>("./drizzle/*.sql", {
   eager: true,
@@ -416,7 +416,7 @@ Same as above but with encryption config.
 ### `getConfig()`
 
 ```typescript
-import { getConfig } from "tauri-plugin-libsql-api";
+import { getConfig } from "tauri-plugin-turso-api";
 
 const { encrypted } = await getConfig();
 ```
@@ -430,7 +430,7 @@ Add to your `tauri.conf.json`:
 ```json
 {
   "plugins": {
-    "libsql": {}
+    "turso": {}
   }
 }
 ```
@@ -439,13 +439,13 @@ Or configure granular capabilities:
 
 ```json
 {
-  "identifier": "libsql:default",
+  "identifier": "turso:default",
   "permissions": [
-    "libsql:allow-load",
-    "libsql:allow-batch",
-    "libsql:allow-execute",
-    "libsql:allow-select",
-    "libsql:allow-close"
+    "turso:allow-load",
+    "turso:allow-batch",
+    "turso:allow-execute",
+    "turso:allow-select",
+    "turso:allow-close"
   ]
 }
 ```
@@ -454,9 +454,9 @@ Or configure granular capabilities:
 
 ## Comparison with @tauri-apps/plugin-sql
 
-| Feature            | tauri-plugin-libsql     | @tauri-apps/plugin-sql |
+| Feature            | tauri-plugin-turso     | @tauri-apps/plugin-sql |
 | ------------------ | ----------------------- | ---------------------- |
-| SQLite             | ✅ libsql               | ✅ sqlx                |
+| SQLite             | ✅ turso               | ✅ sqlx                |
 | Encryption         | ✅ AES-256-CBC built-in | ❌                     |
 | Drizzle ORM        | ✅                      | ✅                     |
 | Migration runner   | ✅ browser-safe         | ❌                     |
@@ -467,20 +467,20 @@ Or configure granular capabilities:
 
 ## Turso / Remote Database
 
-The plugin supports two remote connection modes powered by libsql.
+The plugin supports two remote connection modes powered by turso.
 
 ### Embedded Replica
 
 A local SQLite file stays in sync with a Turso cloud database. Queries read from the local file (fast, offline-capable), writes sync to the remote.
 
 > ⚠️ **Limitation: Embedded replica encryption is currently broken on `main`**
-> Due to an upstream libsql bug, local encryption is **silently disabled** when using embedded replicas (`syncUrl`). The V2 sync protocol (which Turso always uses) switches to a code path that drops the `encryption_config`, leaving the local replica file **unencrypted** even if you pass an `encryption` config. See [Issue #1](https://github.com/HuakunShen/tauri-plugin-libsql/issues/1) for details.
+> Due to an upstream turso bug, local encryption is **silently disabled** when using embedded replicas (`syncUrl`). The V2 sync protocol (which Turso always uses) switches to a code path that drops the `encryption_config`, leaving the local replica file **unencrypted** even if you pass an `encryption` config. See [Issue #1](https://github.com/HuakunShen/tauri-plugin-turso/issues/1) for details.
 >
 > **Fix available on [`fix/sync-encryption`](../../tree/fix/sync-encryption) branch:**
-> That branch vendors a [fork of libsql](https://github.com/HuakunShen/libsql) that threads `encryption_config` through the V2 sync path and encrypts the bootstrapped replica via `sqlite3_rekey`. It works but cannot be published to crates.io (path dependencies are not allowed). Use it via git:
+> That branch vendors a [fork of turso](https://github.com/HuakunShen/turso) that threads `encryption_config` through the V2 sync path and encrypts the bootstrapped replica via `sqlite3_rekey`. It works but cannot be published to crates.io (path dependencies are not allowed). Use it via git:
 >
 > ```toml
-> tauri-plugin-libsql = { git = "https://github.com/HuakunShen/tauri-plugin-libsql", branch = "fix/sync-encryption", features = ["replication", "encryption"] }
+> tauri-plugin-turso = { git = "https://github.com/HuakunShen/tauri-plugin-turso", branch = "fix/sync-encryption", features = ["replication", "encryption"] }
 > ```
 >
 > **Workarounds (on `main`):**
@@ -493,17 +493,17 @@ A local SQLite file stays in sync with a Turso cloud database. Queries read from
 **1. Enable the `replication` feature** in your app's `Cargo.toml`:
 
 ```toml
-tauri-plugin-libsql = { version = "0.1.0", features = ["replication"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["replication"] }
 ```
 
 **2. Load with `syncUrl` and `authToken`:**
 
 ```typescript
-import { Database, migrate } from "tauri-plugin-libsql-api";
+import { Database, migrate } from "tauri-plugin-turso-api";
 
 const db = await Database.load({
   path: "sqlite:local.db", // local replica file
-  syncUrl: "libsql://mydb-org.turso.io",
+  syncUrl: "turso://mydb-org.turso.io",
   authToken: "your-turso-auth-token",
 });
 
@@ -524,7 +524,7 @@ const migrations = import.meta.glob<string>("./drizzle/*.sql", {
 
 const db = await Database.load({
   path: "sqlite:local.db",
-  syncUrl: "libsql://mydb-org.turso.io",
+  syncUrl: "turso://mydb-org.turso.io",
   authToken: import.meta.env.VITE_TURSO_AUTH_TOKEN,
 });
 
@@ -542,21 +542,21 @@ All queries execute on Turso directly — no local file. Requires network for ev
 **Enable the `remote` feature:**
 
 ```toml
-tauri-plugin-libsql = { version = "0.1.0", features = ["remote"] }
+tauri-plugin-turso = { version = "0.1.0", features = ["remote"] }
 ```
 
 ```typescript
 const db = await Database.load({
-  path: "libsql://mydb-org.turso.io",
+  path: "turso://mydb-org.turso.io",
   authToken: "your-turso-auth-token",
 });
 ```
 
 For most Tauri apps, **embedded replica is the better choice** — it works offline and is significantly faster for reads.
 
-> **Note on `batch()` with embedded replicas**: libsql's `execute_batch()` does not correctly route writes through the embedded replica layer in some versions. The plugin uses individual `execute()` calls inside an explicit `BEGIN`/`COMMIT` transaction to avoid this.
+> **Note on `batch()` with embedded replicas**: turso's `execute_batch()` does not correctly route writes through the embedded replica layer in some versions. The plugin uses individual `execute()` calls inside an explicit `BEGIN`/`COMMIT` transaction to avoid this.
 
-> **Note on URL validation**: libsql's builder calls `unwrap()` internally on the sync URL and can panic on a malformed value (e.g. leading/trailing whitespace, wrong scheme). The plugin wraps this in `catch_unwind` so a bad URL surfaces as a proper error instead of hanging the IPC indefinitely.
+> **Note on URL validation**: turso's builder calls `unwrap()` internally on the sync URL and can panic on a malformed value (e.g. leading/trailing whitespace, wrong scheme). The plugin wraps this in `catch_unwind` so a bad URL surfaces as a proper error instead of hanging the IPC indefinitely.
 
 ---
 
@@ -578,7 +578,7 @@ Encryption is a default feature. To opt out, disable default features and select
 **`Cargo.toml`** (in your Tauri app):
 
 ```toml
-tauri-plugin-libsql = { version = "0.1.0", default-features = false, features = ["core"] }
+tauri-plugin-turso = { version = "0.1.0", default-features = false, features = ["core"] }
 ```
 
 **Available features:**
@@ -586,8 +586,8 @@ tauri-plugin-libsql = { version = "0.1.0", default-features = false, features = 
 | Feature       | Default | Description                                  |
 | ------------- | ------- | -------------------------------------------- |
 | `core`        | ✅      | Local SQLite databases (always required)     |
-| `encryption`  | ✅      | AES-256-CBC encryption via libsql            |
-| `replication` | ❌      | libsql replication support (adds TLS)        |
+| `encryption`  | ✅      | AES-256-CBC encryption via turso            |
+| `replication` | ❌      | turso replication support (adds TLS)        |
 | `remote`      | ❌      | Remote database support (planned, see below) |
 
 When `encryption` is disabled, passing an `EncryptionConfig` to `Database.load()` returns an error at runtime. The TypeScript API surface is unchanged — no rebuild of your JS code needed.
@@ -600,16 +600,16 @@ A `SKILL.md` file is included at the root of this repository. It contains struct
 
 ### With Claude Code
 
-Copy `SKILL.md` into your project's `.claude/skills/tauri-plugin-libsql/` directory:
+Copy `SKILL.md` into your project's `.claude/skills/tauri-plugin-turso/` directory:
 
 ```bash
-mkdir -p .claude/skills/tauri-plugin-libsql
-cp /path/to/tauri-plugin-libsql/SKILL.md .claude/skills/tauri-plugin-libsql/
+mkdir -p .claude/skills/tauri-plugin-turso
+cp /path/to/tauri-plugin-turso/SKILL.md .claude/skills/tauri-plugin-turso/
 ```
 
 Claude Code discovers skills automatically. Once copied, you can prompt naturally:
 
-> "Add a `notes` table to my Tauri app using tauri-plugin-libsql. Include the schema, migration, and startup sequence."
+> "Add a `notes` table to my Tauri app using tauri-plugin-turso. Include the schema, migration, and startup sequence."
 
 Claude will apply the correct startup order, use `import.meta.glob` for migrations, and handle the drizzle proxy pattern without extra guidance.
 
@@ -622,12 +622,12 @@ Paste the contents of `SKILL.md` directly into your system prompt or context win
 ## Project Structure
 
 ```
-tauri-plugin-libsql/
+tauri-plugin-turso/
 ├── src/                    # Rust plugin
 │   ├── lib.rs              # Plugin init, command registration
 │   ├── commands.rs         # load, execute, select, close, ping
-│   ├── wrapper.rs          # DbConnection around libsql
-│   ├── decode.rs           # libsql::Value → serde_json::Value
+│   ├── wrapper.rs          # DbConnection around turso
+│   ├── decode.rs           # turso::Value → serde_json::Value
 │   ├── models.rs           # Cipher, EncryptionConfig, QueryResult
 │   ├── error.rs            # Error types
 │   ├── desktop.rs          # Desktop config & base_path

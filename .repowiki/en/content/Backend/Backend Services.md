@@ -33,7 +33,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 }
 
 pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
-    Builder::new("libsql")
+    Builder::new("turso")
         .invoke_handler(tauri::generate_handler![
             commands::load,
             commands::execute,
@@ -46,11 +46,11 @@ pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
         ])
         .setup(move |app, _api| {
             #[cfg(mobile)]
-            let libsql = mobile::init(app, _api, config.clone())?;
+            let turso = mobile::init(app, _api, config.clone())?;
             #[cfg(desktop)]
-            let libsql = desktop::init(app, _api, config)?;
+            let turso = desktop::init(app, _api, config)?;
 
-            app.manage(libsql);
+            app.manage(turso);
             app.manage(DbInstances::default());
             Ok(())
         })
@@ -59,10 +59,10 @@ pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
 ```
 
 **Key components**:
-- **Plugin Name**: "libsql" used in invoke calls as "plugin:libsql|command"
+- **Plugin Name**: "turso" used in invoke calls as "plugin:turso|command"
 - **Command Registration**: All public commands registered via `generate_handler!`
 - **Platform Abstraction**: `#[cfg]` attributes for desktop/mobile
-- **State Management**: Two managed states (`Libsql` and `DbInstances`)
+- **State Management**: Two managed states (`Turso` and `DbInstances`)
 
 **Section sources**
 
@@ -76,8 +76,8 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     _app: &AppHandle<R>,
     _api: PluginApi<R, C>,
     config: Config,
-) -> crate::Result<Libsql> {
-    Ok(Libsql(config))
+) -> crate::Result<Turso> {
+    Ok(Turso(config))
 }
 ```
 
@@ -87,9 +87,9 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     _app: &AppHandle<R>,
     _api: PluginApi<R, C>,
     config: Config,
-) -> crate::Result<Libsql> {
+) -> crate::Result<Turso> {
     // Currently a stub - would need platform-specific implementation
-    Ok(Libsql(config))
+    Ok(Turso(config))
 }
 ```
 
@@ -132,11 +132,11 @@ pub(crate) async fn load<R: Runtime>(
     options: LoadOptions,
 ) -> Result<String, Error> {
     let path = options.path.clone();
-    let libsql = app.state::<Libsql>().inner();
-    let base_path = libsql.base_path();
+    let turso = app.state::<Turso>().inner();
+    let base_path = turso.base_path();
     
     // Use provided encryption or fall back to plugin default
-    let encryption = options.encryption.or_else(|| libsql.encryption().cloned());
+    let encryption = options.encryption.or_else(|| turso.encryption().cloned());
     
     // Idempotent: return existing connection if already open
     if db_instances.0.lock().await.contains_key(&path) {
@@ -217,7 +217,7 @@ pub(crate) async fn batch(
 }
 ```
 
-**Important constraint**: Statements in a batch cannot use bound parameters (`$1`, etc.). This is because the batch uses libsql's `execute()` with `Params::None` for each statement. Use `execute()` for parameterized queries.
+**Important constraint**: Statements in a batch cannot use bound parameters (`$1`, etc.). This is because the batch uses turso's `execute()` with `Params::None` for each statement. Use `execute()` for parameterized queries.
 
 **Section sources**
 
@@ -225,14 +225,14 @@ pub(crate) async fn batch(
 
 ## DbConnection Wrapper
 
-The `DbConnection` struct is the core abstraction around libsql, handling all connection modes and query execution.
+The `DbConnection` struct is the core abstraction around turso, handling all connection modes and query execution.
 
 ### Structure
 
 ```rust
 pub struct DbConnection {
-    conn: Connection,    // libsql connection for queries
-    db: Database,        // libsql database for sync operations
+    conn: Connection,    // turso connection for queries
+    db: Database,        // turso database for sync operations
 }
 ```
 
@@ -254,7 +254,7 @@ pub async fn connect(
         if let Some(url) = sync_url {
             // Embedded replica mode
             Self::open_replica(full_path, url, auth_token?, encryption).await
-        } else if path.starts_with("libsql://") || path.starts_with("https://") {
+        } else if path.starts_with("turso://") || path.starts_with("https://") {
             // Pure remote mode
             Self::open_remote(path, auth_token?).await
         } else {
@@ -264,13 +264,13 @@ pub async fn connect(
     })
     .catch_unwind()
     .await
-    .map_err(|_| Error::InvalidDbUrl("libsql panicked".into()))?
+    .map_err(|_| Error::InvalidDbUrl("turso panicked".into()))?
 }
 ```
 
 **Key aspects**:
 - **Mode detection**: Based on `sync_url` presence and path prefix
-- **Panic safety**: Wrapped in `catch_unwind` to handle libsql's internal panics
+- **Panic safety**: Wrapped in `catch_unwind` to handle turso's internal panics
 - **Path validation**: Local paths are resolved and normalized before opening
 
 **Section sources**
@@ -350,19 +350,19 @@ pub async fn batch(&self,
     for query in &queries {
         if let Err(e) = self.conn.execute(query, Params::None).await {
             let _ = self.conn.execute("ROLLBACK", Params::None).await;
-            return Err(Error::Libsql(e));
+            return Err(Error::Turso(e));
         }
     }
     
     if let Err(e) = self.conn.execute("COMMIT", Params::None).await {
         let _ = self.conn.execute("ROLLBACK", Params::None).await;
-        return Err(Error::Libsql(e));
+        return Err(Error::Turso(e));
     }
     Ok(())
 }
 ```
 
-**Implementation note**: Uses explicit `BEGIN/COMMIT/ROLLBACK` instead of libsql's `execute_batch()` because the latter has issues with embedded replica write routing in some libsql versions.
+**Implementation note**: Uses explicit `BEGIN/COMMIT/ROLLBACK` instead of turso's `execute_batch()` because the latter has issues with embedded replica write routing in some turso versions.
 
 **Section sources**
 
@@ -440,7 +440,7 @@ pub enum Error {
     Io(#[from] std::io::Error),
     
     #[error(transparent)]
-    Libsql(#[from] libsql::Error),
+    Turso(#[from] turso::Error),
     
     #[error("invalid connection url: {0}")]
     InvalidDbUrl(String),
