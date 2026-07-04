@@ -15,6 +15,15 @@ pub struct DbConnection {
     conn: Connection,
     #[allow(dead_code)]
     db: Database,
+    /// turso forbids concurrent use of a single connection: its SDK returns
+    /// `Misuse("concurrent use forbidden")` when two operations drive the same
+    /// connection at once. Tauri dispatches each command onto its multi-threaded
+    /// async runtime, so overlapping execute/select/batch calls for one DB path
+    /// (they share a single `Arc<DbConnection>`) would race. Serialize every
+    /// operation behind this async mutex; it also keeps `batch`'s BEGIN/COMMIT
+    /// atomic against interleaved writes and pins `last_insert_rowid` to the
+    /// `execute` that produced it.
+    op_lock: Mutex<()>,
 }
 
 impl DbConnection {
@@ -58,7 +67,11 @@ impl DbConnection {
 
         let db = builder.build().await?;
         let conn = db.connect()?;
-        Ok(Self { conn, db })
+        Ok(Self {
+            conn,
+            db,
+            op_lock: Mutex::new(()),
+        })
     }
 
     fn resolve_local_path(path: &str, base_path: &Path) -> Result<PathBuf, Error> {
@@ -99,6 +112,7 @@ impl DbConnection {
 
     /// Execute a query that doesn't return rows
     pub async fn execute(&self, query: &str, values: Vec<JsonValue>) -> Result<QueryResult, Error> {
+        let _op = self.op_lock.lock().await;
         let params = json_to_params(values);
         let rows_affected = self.conn.execute(query, params).await?;
 
@@ -114,6 +128,7 @@ impl DbConnection {
         query: &str,
         values: Vec<JsonValue>,
     ) -> Result<Vec<IndexMap<String, JsonValue>>, Error> {
+        let _op = self.op_lock.lock().await;
         let params = json_to_params(values);
         let mut rows = self.conn.query(query, params).await?;
 
@@ -138,6 +153,7 @@ impl DbConnection {
 
     /// Execute multiple SQL statements atomically inside a transaction.
     pub async fn batch(&self, queries: Vec<String>) -> Result<(), Error> {
+        let _op = self.op_lock.lock().await;
         self.conn.execute("BEGIN", ()).await?;
         for query in &queries {
             if let Err(e) = self.conn.execute(query.as_str(), ()).await {
@@ -197,5 +213,63 @@ pub struct DbInstances(pub Arc<Mutex<HashMap<String, Arc<DbConnection>>>>);
 impl Default for DbInstances {
     fn default() -> Self {
         Self(Arc::new(Mutex::new(HashMap::new())))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    async fn memory_conn() -> Arc<DbConnection> {
+        // base_path is only consulted for on-disk relative paths; ":memory:"
+        // bypasses it, so any dir works here.
+        let conn = DbConnection::connect(":memory:", None, std::env::temp_dir(), &[])
+            .await
+            .expect("open in-memory db");
+        Arc::new(conn)
+    }
+
+    /// Reproduces the "concurrent use forbidden" crash: Tauri runs each command on
+    /// its multi-threaded async runtime, so overlapping execute/select calls for
+    /// one DB drive the same `turso::Connection` at once. turso's per-connection
+    /// guard then rejects the loser. Every operation must succeed instead.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+    async fn concurrent_ops_on_one_connection_do_not_collide() {
+        let conn = memory_conn().await;
+        conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, v INTEGER)", vec![])
+            .await
+            .expect("create table");
+
+        let mut handles = Vec::new();
+        for i in 0..64 {
+            let writer = conn.clone();
+            handles.push(tokio::spawn(async move {
+                writer
+                    .execute("INSERT INTO t (v) VALUES (?)", vec![json!(i)])
+                    .await
+                    .map(|_| ())
+            }));
+            let reader = conn.clone();
+            handles.push(tokio::spawn(async move {
+                reader
+                    .select("SELECT COUNT(*) AS n FROM t", vec![])
+                    .await
+                    .map(|_| ())
+            }));
+        }
+
+        for handle in handles {
+            handle
+                .await
+                .expect("task panicked")
+                .expect("operation must not hit turso's concurrent-use guard");
+        }
+
+        let rows = conn
+            .select("SELECT COUNT(*) AS n FROM t", vec![])
+            .await
+            .expect("final count");
+        assert_eq!(rows[0]["n"], json!(64));
     }
 }
