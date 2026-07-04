@@ -20,6 +20,9 @@ futures = "0.3"
 turso = { version = "0.6.0-pre.9", default-features = false }
 turso_core = { version = "0.6.0-pre.9", default-features = false, features = ["fts"] }
 
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
 [build-dependencies]
 tauri-plugin = { version = "2.5.3", features = ["build"] }
 
