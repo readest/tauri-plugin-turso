@@ -10,6 +10,10 @@ export default defineConfig({
   plugins: [tailwindcss(), svelte()],
   resolve: {
     alias: {
+      "@tauri-apps/api/core": path.resolve(
+        __dirname,
+        "./node_modules/@tauri-apps/api/core.js",
+      ),
       $lib: path.resolve(__dirname, "./src/lib"),
     },
   },
